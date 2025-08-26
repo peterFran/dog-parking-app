@@ -1,0 +1,190 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+This is the frontend application for the Dog Parking platform - a Next.js 15 React application providing premium dog care services including daycare, boarding, grooming, and training. The app integrates with a separate AWS serverless backend API and uses Firebase for authentication.
+
+## Visual Development
+
+### Design Principles
+
+- Comprehensive design checklist in `/context/design-principles.md`
+- Brand style guide in `/context/style-guide.md`
+- When making visual (front-end, UI/UX) changes, always refer to these files for guidance
+
+### Quick Visual Check
+
+IMMEDIATELY after implementing any front-end change:
+
+1. **Identify what changed** - Review the modified components/pages
+2. **Navigate to affected pages** - Use `mcp__playwright__browser_navigate` to visit each changed view
+3. **Verify design compliance** - Compare against `/context/design-principles.md` and `/context/style-guide.md`
+4. **Validate feature implementation** - Ensure the change fulfills the user's specific request
+5. **Check acceptance criteria** - Review any provided context files or requirements
+6. **Capture evidence** - Take full page screenshot at desktop viewport (1440px) of each changed view
+7. **Check for errors** - Run `mcp__playwright__browser_console_messages`
+
+This verification ensures changes meet design standards and user requirements.
+
+### Comprehensive Design Review
+
+Invoke the `@agent-design-review` subagent for thorough design validation when:
+
+- Completing significant UI/UX features
+- Before finalizing PRs with visual changes
+- Needing comprehensive accessibility and responsiveness testing
+
+## Development Commands
+
+**Development Server:**
+
+```bash
+npm run dev          # Start development server with Turbopack
+npm run build        # Build for production
+npm run start        # Start production server
+npm run lint         # Run ESLint (disabled during builds)
+```
+
+**Environment Setup:**
+
+```bash
+cp .env.example .env.local   # Copy environment template
+# Edit .env.local with Firebase configuration and API URL
+```
+
+**Key Environment Variables:**
+
+- `NEXT_PUBLIC_FIREBASE_API_KEY` - Firebase API key
+- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` - Firebase auth domain
+- `NEXT_PUBLIC_FIREBASE_PROJECT_ID` - Firebase project ID
+- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` - Firebase storage bucket
+- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` - Firebase messaging sender ID
+- `NEXT_PUBLIC_FIREBASE_APP_ID` - Firebase app ID
+- `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID` - Firebase measurement ID (optional)
+- `NEXT_PUBLIC_API_BASE_URL` - Backend API endpoint (AWS Lambda)
+- `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST` - Development emulator (optional, use localhost:9099)
+
+## Architecture Overview
+
+### Authentication Architecture
+
+- **Firebase Authentication** handles user registration, login, and JWT token management
+- **AuthContext** (`src/contexts/AuthContext.tsx`) provides authentication state throughout the app
+- **ProtectedRoute** component wraps authenticated pages and handles redirects
+- JWT tokens are automatically included in API requests via the `apiClient`
+
+### Data Flow Architecture
+
+- **TanStack React Query** manages server state and API caching
+- **useApi hooks** (`src/hooks/useApi.ts`) provide typed API methods with authentication
+- **ApiClient** (`src/lib/api-client.ts`) handles HTTP requests with automatic token injection
+- **Query keys** are centralized in `QueryKeys` constant for type-safe cache invalidation
+- **Protected queries** automatically include Firebase JWT tokens and are disabled when user is not authenticated
+- **Mutations** automatically invalidate related queries on success
+
+### Styling Architecture
+
+- **Inline styles** are used throughout instead of Tailwind classes for build reliability
+- **UI components** (`src/components/ui/`) use `class-variance-authority` for variant management
+- Each UI component inlines the `cn` utility function to avoid import resolution issues
+- Components use a playful, modern design with gradient backgrounds and emoji icons
+- Tailwind CSS is configured but inline styles are preferred for component consistency
+
+### Route Protection Pattern
+
+```tsx
+<ProtectedRoute>
+  <MainLayout>
+    <PageContent />
+  </MainLayout>
+</ProtectedRoute>
+```
+
+### API Integration Pattern
+
+The app integrates with a separate AWS serverless backend:
+
+- **Public endpoints**: `/venues`, `/venues/{id}`, `/venues/{id}/slots` (no authentication required)
+- **Protected endpoints**: Owner profile, dog management (`/dogs/*`), bookings (`/bookings/*`) - all require Firebase JWT
+- **Error handling**: API errors are logged and re-thrown with descriptive messages
+- **Token management**: Bearer tokens are automatically injected via `Authorization` header
+- **Request format**: All requests use `Content-Type: application/json`
+
+### State Management Strategy
+
+- **Authentication state**: Managed by AuthContext with Firebase Auth listener
+- **Server state**: TanStack Query with optimistic updates and cache invalidation
+- **Form state**: React Hook Form with Zod validation
+- **Local UI state**: Standard React useState for component-specific state
+
+## Key Patterns and Conventions
+
+### Import Path Resolution
+
+- **Relative imports** are used exclusively instead of `@/` path aliases
+- This prevents Vercel build failures due to TypeScript path mapping issues
+- Example: `import { useAuth } from '../../contexts/AuthContext';`
+
+### Firebase Integration
+
+- Firebase is initialized in `src/lib/firebase.ts` with emulator support for development
+- AuthContext provides typed authentication methods: `signIn`, `signUp`, `signInWithGoogle`, `signOut`, `getIdToken`
+- Auth emulator automatically connects when `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST` is set to `localhost:9099`
+- Email verification is automatically sent on user registration
+- Google Auth uses `select_account` prompt for better UX
+
+### API Client Architecture
+
+- Centralized `ApiClient` class handles all HTTP communication
+- Automatic Bearer token injection for authenticated requests
+- Type-safe methods for all backend endpoints
+- Comprehensive error handling with typed error responses
+
+### Component Architecture
+
+- **Page components** use App Router pattern in `src/app/`
+- **Layout components** provide consistent structure (Header, Footer, MainLayout)
+- **UI components** are self-contained with inlined utilities
+- **Auth components** handle authentication flows and route protection
+
+### Build Configuration
+
+- ESLint is disabled during builds (`ignoreDuringBuilds: true`) to prevent deployment failures
+- Turbopack is used for faster development builds
+- Next.js 15 with App Router and React 19
+
+### Query Hook Patterns
+
+When creating new API hooks, follow these patterns:
+
+- **Public endpoints**: Use simple `useQuery` without authentication checks
+- **Protected endpoints**: Include `getIdToken()` in `queryFn`, add `enabled: !!user` condition
+- **Mutations**: Always invalidate related queries in `onSuccess` callback
+- **Query keys**: Add new keys to centralized `QueryKeys` constant for type safety
+
+### Authentication Flow Patterns
+
+- All protected pages must be wrapped with `<ProtectedRoute>`
+- Use `const { user, loading } = useAuth()` to access auth state
+- Protected API calls automatically handle token injection via `getIdToken()`
+- Auth loading states should be handled in components to prevent flickering
+
+### Error Handling Conventions
+
+- API errors are automatically logged in the `ApiClient.request()` method
+- Component-level error handling should use React Query's error states
+- Auth errors are caught and re-thrown in `AuthContext` methods with console logging
+- All async operations should include proper error boundaries
+
+## Development Context
+
+The frontend application is designed to work with:
+
+- **Backend API**: AWS Lambda functions with DynamoDB (separate repository)
+- **Authentication**: Firebase Auth with social login support
+- **Deployment**: Vercel with automatic GitHub integration
+- **Development**: Local development with Firebase emulator support
+
+This application prioritizes rapid deployment and development velocity while maintaining type safety and modern React patterns.
