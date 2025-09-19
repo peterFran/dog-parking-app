@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, PanInfo, useMotionValue, useTransform } from 'motion/react';
+import { motion, PanInfo, useMotionValue, useTransform } from 'framer-motion';
 import { ChevronUp, Grip } from 'lucide-react';
 
 interface BottomDrawerProps {
