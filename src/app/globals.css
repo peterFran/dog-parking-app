@@ -1,40 +1,111 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* Custom animations and styles for the dog parking theme */
-@keyframes bounce-gentle {
-  0%, 20%, 53%, 80%, 100% {
-    transform: translate3d(0,0,0);
-  }
-  40%, 43% {
-    transform: translate3d(0, -8px, 0);
-  }
-  70% {
-    transform: translate3d(0, -4px, 0);
-  }
-  90% {
-    transform: translate3d(0, -2px, 0);
-  }
+@theme {
+  --font-size: 14px;
+  --color-background: #fefcf9;
+  --color-foreground: #2c1810;
+  --color-card: #ffffff;
+  --color-card-foreground: #2c1810;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #2c1810;
+  --color-primary: #d68c3c;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #fff2e6;
+  --color-secondary-foreground: #b8540a;
+  --color-muted: #f4ede4;
+  --color-muted-foreground: #8a6f47;
+  --color-accent: #ffeedd;
+  --color-accent-foreground: #b8540a;
+  --color-destructive: #dc3545;
+  --color-destructive-foreground: #ffffff;
+  --color-border: rgba(184, 84, 10, 0.15);
+  --color-input: transparent;
+  --color-input-background: #faf7f2;
+  --color-switch-background: #e6d3b8;
+  --color-ring: #d68c3c;
+  --color-chart-1: #e67e22;
+  --color-chart-2: #f39c12;
+  --color-chart-3: #d35400;
+  --color-chart-4: #e74c3c;
+  --color-chart-5: #fd79a8;
+  --radius: 0.625rem;
+  --color-sidebar: #faf7f2;
+  --color-sidebar-foreground: #2c1810;
+  --color-sidebar-primary: #e67e22;
+  --color-sidebar-primary-foreground: #ffffff;
+  --color-sidebar-accent: #fff2e6;
+  --color-sidebar-accent-foreground: #b8540a;
+  --color-sidebar-border: #e6d3b8;
+  --color-sidebar-ring: #f39c12;
+  
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
 }
 
-.bounce-gentle {
-  animation: bounce-gentle 2s ease-in-out infinite;
+
+html {
+  font-size: var(--font-size);
 }
 
-@keyframes wiggle {
-  0% { transform: rotate(-3deg); }
-  50% { transform: rotate(3deg); }
-  100% { transform: rotate(-3deg); }
+* {
+  border-color: var(--color-border);
+  outline-color: rgba(243, 156, 18, 0.5);
 }
 
-.wiggle {
-  animation: wiggle 1s ease-in-out infinite;
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
 }
 
-.gradient-text {
-  background: linear-gradient(45deg, #f59e0b, #ef4444, #ec4899, #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+/**
+ * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
+ */
+:where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
+  h1 {
+    font-size: 1.5rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  h4 {
+    font-size: 1rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  p {
+    font-size: 1rem;
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
+
+  label {
+    font-size: 1rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  button {
+    font-size: 1rem;
+    font-weight: var(--font-weight-medium);
+    line-height: 1.5;
+  }
+
+  input {
+    font-size: 1rem;
+    font-weight: var(--font-weight-normal);
+    line-height: 1.5;
+  }
 }

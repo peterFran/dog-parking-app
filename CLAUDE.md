@@ -86,11 +86,45 @@ cp .env.example .env.local   # Copy environment template
 
 ### Styling Architecture
 
-- **Inline styles** are used throughout instead of Tailwind classes for build reliability
-- **UI components** (`src/components/ui/`) use `class-variance-authority` for variant management
+- **Tailwind CSS v4** is used for styling with CSS-based configuration
+- **Custom color palette** defined in `src/app/globals.css` using the `@theme` directive
+- **UI components** (`src/components/ui/`) use `class-variance-authority` for variant management with Tailwind classes
 - Each UI component inlines the `cn` utility function to avoid import resolution issues
-- Components use a playful, modern design with gradient backgrounds and emoji icons
-- Tailwind CSS is configured but inline styles are preferred for component consistency
+- Components use a warm, professional design with gentle gradients and thoughtful color choices
+- **Design system colors**:
+  - Primary: `#4f46e5` (warm indigo, friendlier than harsh navy)
+  - Accent colors: `accent-sage` (`#dcfce7`), `accent-peach` (`#fed7aa`), `accent-lavender` (`#f3e8ff`)
+  - Orange accent: `#f97316` (warmer than aggressive orange)
+- **Important**: Tailwind v4 uses CSS-based config in `globals.css`, NOT `tailwind.config.ts`
+
+### Tailwind CSS v4 Configuration
+
+This project uses Tailwind CSS v4 (beta) which has a completely different configuration system:
+
+**Color Configuration (in `src/app/globals.css`):**
+```css
+@theme {
+  --color-primary: #4f46e5;
+  --color-accent-sage: #dcfce7;
+  --color-accent-peach: #fed7aa;
+  --color-accent-lightBlue: #dbeafe;
+  --color-accent-lavender: #f3e8ff;
+  --color-accent-textGray: #6b7280;
+  /* etc... */
+}
+```
+
+**Key Differences from v3:**
+- Configuration is CSS-based using `@theme` directive, not JavaScript config file
+- Custom colors are defined as CSS variables in `globals.css`
+- `tailwind.config.ts` is essentially empty (kept for compatibility only)
+- PostCSS uses `@tailwindcss/postcss` plugin
+- Build process compiles CSS variables into utility classes
+
+**Adding New Colors:**
+1. Add to `@theme` block in `globals.css` using `--color-` prefix
+2. Use in components as `bg-yourColor`, `text-yourColor`, etc.
+3. NO configuration needed in `tailwind.config.ts`
 
 ### Route Protection Pattern
 
@@ -154,6 +188,7 @@ The app integrates with a separate AWS serverless backend:
 - ESLint is disabled during builds (`ignoreDuringBuilds: true`) to prevent deployment failures
 - Turbopack is used for faster development builds
 - Next.js 15 with App Router and React 19
+- **Tailwind CSS v4** with PostCSS plugin (`@tailwindcss/postcss`) for modern CSS processing
 
 ### Query Hook Patterns
 
