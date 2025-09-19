@@ -1,4 +1,7 @@
+'use client';
+
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -15,6 +18,8 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { AuthModal } from './AuthModal';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PricingTier {
   id: string;
@@ -85,6 +90,27 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onGetStarted }: LandingPageProps) {
+  const router = useRouter();
+  const { signInWithGoogle } = useAuth();
+
+  const handleSocialLogin = async (provider: 'apple' | 'google') => {
+    if (provider === 'google') {
+      try {
+        await signInWithGoogle();
+        // On successful Google auth, redirect to find-care page
+        router.push('/find-care');
+      } catch (error) {
+        console.error('Google sign-in failed:', error);
+        // Could show error toast here in the future
+      }
+    }
+    // Apple login does nothing (as requested)
+  };
+
+  const handleEmailAuth = () => {
+    // Email auth does nothing (as requested)
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -98,12 +124,16 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               <span className="text-white text-lg font-medium">DogPark(ing)</span>
             </div>
             <div className="flex items-center gap-4">
-              <Button variant="ghost" className="text-white hover:bg-white/10">
-                Sign In
-              </Button>
-              <Button variant="secondary" onClick={onGetStarted}>
-                Get Started
-              </Button>
+              <AuthModal onSocialLogin={handleSocialLogin} onEmailAuth={handleEmailAuth}>
+                <Button variant="ghost" className="text-white hover:bg-white/10">
+                  Sign In
+                </Button>
+              </AuthModal>
+              <AuthModal onSocialLogin={handleSocialLogin} onEmailAuth={handleEmailAuth}>
+                <Button variant="secondary">
+                  Get Started
+                </Button>
+              </AuthModal>
             </div>
           </div>
         </div>
@@ -138,10 +168,12 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 mb-12">
-              <Button size="lg" className="text-lg px-8 py-6" onClick={onGetStarted}>
-                Get Started Free
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
+              <AuthModal onSocialLogin={handleSocialLogin} onEmailAuth={handleEmailAuth}>
+                <Button size="lg" className="text-lg px-8 py-6">
+                  Get Started Free
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </AuthModal>
               <Button variant="outline" size="lg" className="text-lg px-8 py-6 bg-white/10 border-white/30 text-white hover:bg-white/20">
                 Watch Demo
               </Button>
