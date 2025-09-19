@@ -18,6 +18,7 @@ import {
   Award
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Dog {
   id: string;
@@ -107,9 +108,29 @@ const pointsPackages: PointsPackage[] = [
 ];
 
 export function UserDashboard() {
+  const { user } = useAuth();
   const [currentPoints] = useState(150);
   const [dogs] = useState(mockDogs);
   const [bookings] = useState(mockBookings);
+
+  // Extract first name from user's display name or email
+  const getUserFirstName = () => {
+    if (!user) return 'My';
+    
+    // Try to get first name from displayName
+    if (user.displayName) {
+      return user.displayName.split(' ')[0];
+    }
+    
+    // Fallback to first part of email before @
+    if (user.email) {
+      const emailName = user.email.split('@')[0];
+      // Capitalize first letter
+      return emailName.charAt(0).toUpperCase() + emailName.slice(1);
+    }
+    
+    return 'My';
+  };
 
   const upcomingBookings = bookings.filter(b => b.status === 'upcoming');
   const pastBookings = bookings.filter(b => b.status === 'completed');
@@ -119,7 +140,7 @@ export function UserDashboard() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-medium">My Dashboard</h2>
+          <h2 className="text-2xl font-medium">{getUserFirstName()}'s Dashboard</h2>
           <p className="text-muted-foreground">Manage your dogs and bookings</p>
         </div>
         <div className="flex items-center gap-2">
