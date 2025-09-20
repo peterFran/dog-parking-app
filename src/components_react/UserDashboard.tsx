@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useAuth } from '../contexts/AuthContext';
+import { AddDogModal } from './AddDogModal';
 
 interface Dog {
   id: string;
@@ -110,7 +111,7 @@ const pointsPackages: PointsPackage[] = [
 export function UserDashboard() {
   const { user } = useAuth();
   const [currentPoints] = useState(150);
-  const [dogs] = useState(mockDogs);
+  const [dogs, setDogs] = useState(mockDogs);
   const [bookings] = useState(mockBookings);
 
   // Extract first name from user's display name or email
@@ -130,6 +131,15 @@ export function UserDashboard() {
     }
     
     return 'My';
+  };
+
+  const handleAddDog = (dogData: Omit<Dog, 'id'>) => {
+    const newDog: Dog = {
+      id: `dog-${Date.now()}`,
+      ...dogData
+    };
+    setDogs(prevDogs => [...prevDogs, newDog]);
+    console.log('New dog added:', newDog);
   };
 
   const upcomingBookings = bookings.filter(b => b.status === 'upcoming');
@@ -281,10 +291,12 @@ export function UserDashboard() {
         <TabsContent value="dogs" className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">My Dogs</h3>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Dog
-            </Button>
+            <AddDogModal onAddDog={handleAddDog}>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Dog
+              </Button>
+            </AddDogModal>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
