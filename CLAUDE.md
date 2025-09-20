@@ -179,9 +179,28 @@ The app integrates with a separate AWS serverless backend:
 ### Component Architecture
 
 - **Page components** use App Router pattern in `src/app/`
-- **Layout components** provide consistent structure (Header, Footer, MainLayout)
+- **Layout components** provide consistent structure using `AppLayout` component
 - **UI components** are self-contained with inlined utilities
 - **Auth components** handle authentication flows and route protection
+
+### Modal/Dialog Pattern
+
+**IMPORTANT**: This project uses **Popover components** instead of Dialog components for modal interactions.
+
+- **Correct Pattern**: Use `Popover`, `PopoverContent`, `PopoverTrigger` from `./ui/popover`
+- **Incorrect Pattern**: Do NOT use `Dialog`, `DialogContent`, etc. from `./ui/dialog`
+- **Example**: See `AuthModal.tsx` and `AddDogModal.tsx` for proper implementation
+- **Structure**:
+  ```tsx
+  <Popover open={open} onOpenChange={setOpen}>
+    <PopoverTrigger asChild>{children}</PopoverTrigger>
+    <PopoverContent className="w-96 p-0" align="end">
+      <Card className="border-0 shadow-lg">
+        {/* Modal content */}
+      </Card>
+    </PopoverContent>
+  </Popover>
+  ```
 
 ### Build Configuration
 
