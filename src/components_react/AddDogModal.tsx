@@ -131,18 +131,25 @@ export function AddDogModal({ children, onAddDog }: AddDogModalProps) {
     };
 
     const dogData = {
+      // Required fields for API
       name: formData.name,
       breed: formData.breed,
-      age: calculateAge(formData.birthDate),
-      size: formData.size,
-      birthDate: formData.birthDate,
-      vaccinated: formData.vaccinated,
+      date_of_birth: formData.birthDate,
+      size: formData.size.toUpperCase(), // Convert "Medium" to "MEDIUM"
+      vaccination_status: formData.vaccinated ? "VACCINATED" : "NOT_VACCINATED",
+
+      // Optional fields for API
       microchipped: formData.microchipped,
-      image: formData.image || `https://images.unsplash.com/photo-1561037404-61cd46aa615b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkb2clMjBwb3J0cmFpdHxlbnwxfHx8fDE3NTY3MDI5MTl8MA&ixlib=rb-4.1.0&q=80&w=1080`,
-      specialNeeds: formData.specialNeeds,
-      medicalNotes: formData.medicalNotes || undefined,
-      behaviorNotes: formData.behaviorNotes || undefined,
-      favoriteActivities: formData.favoriteActivities.length > 0 ? formData.favoriteActivities : undefined
+      special_needs: formData.specialNeeds,
+      medical_notes: formData.medicalNotes || "",
+      behavior_notes: formData.behaviorNotes || "",
+      favorite_activities: formData.favoriteActivities.length > 0
+        ? formData.favoriteActivities.join(", ")
+        : "",
+
+      // Additional fields for local display (not sent to API)
+      age: calculateAge(formData.birthDate),
+      image: formData.image || `https://images.unsplash.com/photo-1561037404-61cd46aa615b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx8fDE3NTY3MDI5MTl8MA&ixlib=rb-4.1.0&q=80&w=1080`
     };
 
     onAddDog(dogData);
