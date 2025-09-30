@@ -5,32 +5,27 @@ import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { 
-  Plus, 
-  CreditCard, 
-  Calendar, 
-  Clock, 
-  MapPin, 
+import {
+  Plus,
+  CreditCard,
+  Calendar,
+  Clock,
+  MapPin,
   Star,
   Edit,
   Settings,
   Heart,
-  Award
+  Award,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useAuth } from '../contexts/AuthContext';
 import { AddDogModal } from './AddDogModal';
+import { useDogs, useCreateDog } from '../hooks/useApi';
+import { transformDogForUI, transformDogForAPI, DogForUI } from '../types/dog';
+import { useToast } from './ui/toast';
 
-interface Dog {
-  id: string;
-  name: string;
-  breed: string;
-  age: string;
-  size: 'Small' | 'Medium' | 'Large';
-  image: string;
-  specialNeeds?: string[];
-  vaccinated: boolean;
-}
 
 interface Booking {
   id: string;
@@ -53,28 +48,6 @@ interface PointsPackage {
   popular?: boolean;
 }
 
-const mockDogs: Dog[] = [
-  {
-    id: '1',
-    name: 'Buddy',
-    breed: 'Golden Retriever',
-    age: '3 years',
-    size: 'Large',
-    image: 'https://images.unsplash.com/photo-1687211818108-667d028f1ae4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnb2xkZW4lMjByZXRyaWV2ZXIlMjBkb2d8ZW58MXx8fHwxNzU2NzA2MTQxfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    vaccinated: true,
-    specialNeeds: ['Friendly with other dogs']
-  },
-  {
-    id: '2',
-    name: 'Luna',
-    breed: 'French Bulldog',
-    age: '2 years',
-    size: 'Small',
-    image: 'https://images.unsplash.com/photo-1617223777538-5698e655a613?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjdXRlJTIwZG9nJTIwcG9ydHJhaXR8ZW58MXx8fHwxNzU2NzAyOTE5fDA&ixlib=rb-4.1.0&q=80&w=1080',
-    vaccinated: true,
-    specialNeeds: ['Needs frequent water breaks']
-  }
-];
 
 const mockBookings: Booking[] = [
   {
@@ -111,8 +84,15 @@ const pointsPackages: PointsPackage[] = [
 export function UserDashboard() {
   const { user } = useAuth();
   const [currentPoints] = useState(150);
-  const [dogs, setDogs] = useState(mockDogs);
   const [bookings] = useState(mockBookings);
+  const { addToast } = useToast();
+
+  // Real API hooks
+  const { data: apiDogs = [], isLoading: dogsLoading, error: dogsError } = useDogs();
+  const createDogMutation = useCreateDog();
+
+  // Transform API dogs for UI display
+  const dogs: DogForUI[] = apiDogs.map(transformDogForUI);
 
   // Extract first name from user's display name or email
   const getUserFirstName = () => {
@@ -133,17 +113,45 @@ export function UserDashboard() {
     return 'My';
   };
 
-  const handleAddDog = (dogData: Omit<Dog, 'id'>) => {
-    const newDog: Dog = {
-      id: `dog-${Date.now()}`,
-      ...dogData
-    };
-    setDogs(prevDogs => [...prevDogs, newDog]);
-    console.log('New dog added:', newDog);
+  const handleAddDog = async (dogData: Omit<DogForUI, 'id' | 'age'>) => {
+    try {
+      const apiData = transformDogForAPI(dogData);
+      await createDogMutation.mutateAsync(apiData);
+      addToast({
+        type: 'success',
+        title: 'Dog Added Successfully!',
+        description: `${dogData.name} has been added to your profile.`
+      });
+    } catch (error) {
+      console.error('Error adding dog:', error);
+      addToast({
+        type: 'error',
+        title: 'Failed to Add Dog',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.'
+      });
+    }
   };
 
   const upcomingBookings = bookings.filter(b => b.status === 'upcoming');
   const pastBookings = bookings.filter(b => b.status === 'completed');
+
+  // Error handling for dogs API
+  if (dogsError) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="p-6 text-center">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2">Failed to Load Dogs</h3>
+          <p className="text-muted-foreground mb-4">
+            There was an error loading your dogs. Please try again later.
+          </p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -266,23 +274,41 @@ export function UserDashboard() {
                 <CardTitle>My Dogs</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {dogs.map((dog) => (
-                  <div key={dog.id} className="flex items-center gap-4">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={dog.image} alt={dog.name} />
-                      <AvatarFallback>{dog.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <p className="font-medium">{dog.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {dog.breed} • {dog.age} • {dog.size}
-                      </p>
-                    </div>
-                    <Badge variant={dog.vaccinated ? "default" : "secondary"}>
-                      {dog.vaccinated ? "Vaccinated" : "Needs Update"}
-                    </Badge>
+                {dogsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Loading dogs...</span>
                   </div>
-                ))}
+                ) : dogs.length > 0 ? (
+                  dogs.map((dog) => (
+                    <div key={dog.id} className="flex items-center gap-4">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={dog.image} alt={dog.name} />
+                        <AvatarFallback>{dog.name[0]}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="font-medium">{dog.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {dog.breed} • {dog.age} • {dog.size}
+                        </p>
+                      </div>
+                      <Badge variant={dog.vaccinated ? "default" : "secondary"}>
+                        {dog.vaccinated ? "Vaccinated" : "Needs Update"}
+                      </Badge>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <Heart className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground mb-4">No dogs added yet</p>
+                    <AddDogModal onAddDog={handleAddDog}>
+                      <Button size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Your First Dog
+                      </Button>
+                    </AddDogModal>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -291,74 +317,105 @@ export function UserDashboard() {
         <TabsContent value="dogs" className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium">My Dogs</h3>
-            <AddDogModal onAddDog={handleAddDog}>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
+            <AddDogModal onAddDog={handleAddDog} isSubmitting={createDogMutation.isPending}>
+              <Button disabled={createDogMutation.isPending}>
+                {createDogMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-2" />
+                )}
                 Add New Dog
               </Button>
             </AddDogModal>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {dogs.map((dog) => (
-              <Card key={dog.id}>
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{dog.name}</CardTitle>
-                    <Button variant="ghost" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="aspect-square overflow-hidden rounded-lg">
-                    <ImageWithFallback
-                      src={dog.image}
-                      alt={dog.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Breed:</span>
-                      <span className="text-sm">{dog.breed}</span>
+          {dogsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-3 text-muted-foreground">Loading dogs...</span>
+            </div>
+          ) : dogs.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {dogs.map((dog) => (
+                <Card key={dog.id}>
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-lg">{dog.name}</CardTitle>
+                      <Button variant="ghost" size="sm">
+                        <Edit className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Age:</span>
-                      <span className="text-sm">{dog.age}</span>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="aspect-square overflow-hidden rounded-lg">
+                      <ImageWithFallback
+                        src={dog.image}
+                        alt={dog.name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-sm text-muted-foreground">Size:</span>
-                      <Badge variant="outline" className="text-xs">{dog.size}</Badge>
-                    </div>
-                  </div>
 
-                  {dog.specialNeeds && dog.specialNeeds.length > 0 && (
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-2">Special Notes:</p>
-                      <div className="space-y-1">
-                        {dog.specialNeeds.map((need, index) => (
-                          <p key={index} className="text-xs bg-muted/50 rounded px-2 py-1">
-                            {need}
-                          </p>
-                        ))}
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Breed:</span>
+                        <span className="text-sm">{dog.breed}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Age:</span>
+                        <span className="text-sm">{dog.age}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Size:</span>
+                        <Badge variant="outline" className="text-xs">{dog.size}</Badge>
                       </div>
                     </div>
-                  )}
 
-                  <div className="flex items-center justify-between pt-2">
-                    <Badge variant={dog.vaccinated ? "default" : "secondary"}>
-                      {dog.vaccinated ? "Vaccinated" : "Needs Update"}
-                    </Badge>
-                    <Button variant="outline" size="sm">
-                      View Profile
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                    {dog.specialNeeds && dog.specialNeeds.length > 0 && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-2">Special Notes:</p>
+                        <div className="space-y-1">
+                          {dog.specialNeeds.map((need, index) => (
+                            <p key={index} className="text-xs bg-muted/50 rounded px-2 py-1">
+                              {need}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2">
+                      <Badge variant={dog.vaccinated ? "default" : "secondary"}>
+                        {dog.vaccinated ? "Vaccinated" : "Needs Update"}
+                      </Badge>
+                      <Button variant="outline" size="sm">
+                        View Profile
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Heart className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">No dogs added yet</h3>
+                <p className="text-muted-foreground mb-6">
+                  Add your first dog to start booking care sessions
+                </p>
+                <AddDogModal onAddDog={handleAddDog} isSubmitting={createDogMutation.isPending}>
+                  <Button disabled={createDogMutation.isPending}>
+                    {createDogMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="h-4 w-4 mr-2" />
+                    )}
+                    Add Your First Dog
+                  </Button>
+                </AddDogModal>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="bookings" className="space-y-6">

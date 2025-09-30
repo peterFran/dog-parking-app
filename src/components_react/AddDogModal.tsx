@@ -5,7 +5,8 @@ import {
   Scale,
   Shield,
   Upload,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -20,26 +21,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Separator } from './ui/separator';
 import { Switch } from './ui/switch';
 import { Textarea } from './ui/textarea';
-
-interface Dog {
-  id: string;
-  name: string;
-  breed: string;
-  age: string;
-  size: 'Small' | 'Medium' | 'Large';
-  image: string;
-  specialNeeds?: string[];
-  vaccinated: boolean;
-  birthDate?: string;
-  microchipped?: boolean;
-  medicalNotes?: string;
-  behaviorNotes?: string;
-  favoriteActivities?: string[];
-}
+import { DogForUI } from '../types/dog';
 
 interface AddDogModalProps {
   children: React.ReactNode;
-  onAddDog: (dog: Omit<Dog, 'id'>) => void;
+  onAddDog: (dog: Omit<DogForUI, 'id' | 'age'>) => Promise<void>;
+  isSubmitting?: boolean;
 }
 
 const breedSuggestions = [
@@ -54,7 +41,7 @@ const activityOptions = [
   'Playing with toys', 'Agility training', 'Beach walks', 'Park visits', 'Trick training'
 ];
 
-export function AddDogModal({ children, onAddDog }: AddDogModalProps) {
+export function AddDogModal({ children, onAddDog, isSubmitting = false }: AddDogModalProps) {
   const [open, setOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -110,58 +97,44 @@ export function AddDogModal({ children, onAddDog }: AddDogModalProps) {
     }));
   };
 
-  const handleSubmit = () => {
-    // Calculate age from birth date
-    const calculateAge = (birthDate: string) => {
-      const today = new Date();
-      const birth = new Date(birthDate);
-      const ageInMonths = (today.getFullYear() - birth.getFullYear()) * 12 + (today.getMonth() - birth.getMonth());
-      
-      if (ageInMonths < 12) {
-        return `${ageInMonths} months`;
-      } else {
-        const years = Math.floor(ageInMonths / 12);
-        const remainingMonths = ageInMonths % 12;
-        if (remainingMonths === 0) {
-          return `${years} year${years > 1 ? 's' : ''}`;
-        } else {
-          return `${years} year${years > 1 ? 's' : ''}, ${remainingMonths} months`;
-        }
-      }
-    };
-
-    const dogData = {
+  const handleSubmit = async () => {
+    const dogData: Omit<DogForUI, 'id' | 'age'> = {
       name: formData.name,
       breed: formData.breed,
-      age: calculateAge(formData.birthDate),
-      size: formData.size,
       birthDate: formData.birthDate,
+      size: formData.size,
       vaccinated: formData.vaccinated,
       microchipped: formData.microchipped,
-      image: formData.image || `https://images.unsplash.com/photo-1561037404-61cd46aa615b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkb2clMjBwb3J0cmFpdHxlbnwxfHx8fDE3NTY3MDI5MTl8MA&ixlib=rb-4.1.0&q=80&w=1080`,
+      image: formData.image || `https://images.unsplash.com/photo-1561037404-61cd46aa615b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx8fDE3NTY3MDI5MTl8MA&ixlib=rb-4.1.0&q=80&w=1080`,
       specialNeeds: formData.specialNeeds,
-      medicalNotes: formData.medicalNotes || undefined,
-      behaviorNotes: formData.behaviorNotes || undefined,
-      favoriteActivities: formData.favoriteActivities.length > 0 ? formData.favoriteActivities : undefined
+      medicalNotes: formData.medicalNotes,
+      behaviorNotes: formData.behaviorNotes,
+      favoriteActivities: formData.favoriteActivities
     };
 
-    onAddDog(dogData);
-    setOpen(false);
-    setCurrentStep(1);
-    setFormData({
-      name: '',
-      breed: '',
-      size: 'Medium',
-      birthDate: '',
-      vaccinated: true,
-      microchipped: false,
-      image: '',
-      medicalNotes: '',
-      behaviorNotes: '',
-      specialNeeds: [],
-      favoriteActivities: []
-    });
-    setSelectedActivities([]);
+    try {
+      await onAddDog(dogData);
+      // Reset form and close modal on success
+      setOpen(false);
+      setCurrentStep(1);
+      setFormData({
+        name: '',
+        breed: '',
+        size: 'Medium',
+        birthDate: '',
+        vaccinated: true,
+        microchipped: false,
+        image: '',
+        medicalNotes: '',
+        behaviorNotes: '',
+        specialNeeds: [],
+        favoriteActivities: []
+      });
+      setSelectedActivities([]);
+    } catch (error) {
+      // Error handling is done in the parent component
+      console.error('Error in AddDogModal:', error);
+    }
   };
 
   const nextStep = () => {
@@ -615,17 +588,21 @@ export function AddDogModal({ children, onAddDog }: AddDogModalProps) {
               {currentStep < 4 ? (
                 <Button
                   onClick={nextStep}
-                  disabled={!canProceed()}
+                  disabled={!canProceed() || isSubmitting}
                 >
                   Next
                 </Button>
               ) : (
                 <Button
                   onClick={handleSubmit}
-                  disabled={!canProceed()}
+                  disabled={!canProceed() || isSubmitting}
                 >
-                  <Heart className="h-4 w-4 mr-2" />
-                  Add Dog
+                  {isSubmitting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Heart className="h-4 w-4 mr-2" />
+                  )}
+                  {isSubmitting ? 'Adding Dog...' : 'Add Dog'}
                 </Button>
               )}
             </div>
