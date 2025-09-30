@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/api-client';
 import { useAuth } from '../contexts/AuthContext';
+import { Dog, CreateDogRequest } from '../types/dog';
 
 // Query Keys
 export const QueryKeys = {
@@ -90,7 +91,7 @@ export function useUpdateOwnerProfile() {
 export function useDogs() {
   const { getIdToken, user } = useAuth();
 
-  return useQuery({
+  return useQuery<Dog[]>({
     queryKey: QueryKeys.dogs,
     queryFn: async () => {
       const token = await getIdToken();
@@ -104,7 +105,7 @@ export function useDogs() {
 export function useDog(id: string) {
   const { getIdToken, user } = useAuth();
 
-  return useQuery({
+  return useQuery<Dog>({
     queryKey: QueryKeys.dog(id),
     queryFn: async () => {
       const token = await getIdToken();
@@ -119,8 +120,8 @@ export function useCreateDog() {
   const { getIdToken } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: async (data: any) => {
+  return useMutation<Dog, Error, CreateDogRequest>({
+    mutationFn: async (data: CreateDogRequest) => {
       const token = await getIdToken();
       if (!token) throw new Error('No auth token');
       return apiClient.createDog(data, token);

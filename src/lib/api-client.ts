@@ -1,3 +1,5 @@
+import { Dog, CreateDogRequest } from '../types/dog';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
 
 interface ApiError {
@@ -84,23 +86,24 @@ class ApiClient {
     }, token);
   }
 
-  async getDogs(token: string) {
-    return this.request('/dogs', {}, token);
+  async getDogs(token: string): Promise<Dog[]> {
+    const response = await this.request<{ dogs: Dog[]; count: number }>('/dogs', {}, token);
+    return response.dogs;
   }
 
-  async createDog(data: any, token: string) {
-    return this.request('/dogs', {
+  async createDog(data: CreateDogRequest, token: string): Promise<Dog> {
+    return this.request<Dog>('/dogs', {
       method: 'POST',
       body: JSON.stringify(data),
     }, token);
   }
 
-  async getDog(id: string, token: string) {
-    return this.request(`/dogs/${id}`, {}, token);
+  async getDog(id: string, token: string): Promise<Dog> {
+    return this.request<Dog>(`/dogs/${id}`, {}, token);
   }
 
-  async updateDog(id: string, data: any, token: string) {
-    return this.request(`/dogs/${id}`, {
+  async updateDog(id: string, data: Partial<CreateDogRequest>, token: string): Promise<Dog> {
+    return this.request<Dog>(`/dogs/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }, token);
