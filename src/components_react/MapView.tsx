@@ -6,6 +6,7 @@ import { MapPin, Clock, Users, Star } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { BottomDrawer } from './BottomDrawer';
 import { useIsMobile } from './ui/use-mobile';
+import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
 
 interface Venue {
   id: string;
@@ -96,71 +97,47 @@ export function MapView({ onVenueSelect }: MapViewProps) {
     onVenueSelect(venue);
   };
 
-  const MapComponent = () => (
-    <div className={`relative bg-muted/30 rounded-lg ${isMobile ? 'h-full' : 'flex-1 mr-4'}`}>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center">
-          <MapPin className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">Interactive map would be here</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            {isMobile ? 'Tap venue markers or use the drawer below' : 'Click venue cards to see details'}
-          </p>
-        </div>
+  const MapComponent = () => {
+    // Center on London (average of all venue coordinates)
+    const center = { lat: 51.5100, lng: -0.1180 };
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+
+    return (
+      <div className={`relative rounded-lg overflow-hidden ${isMobile ? 'h-full' : 'flex-1'}`}>
+        <APIProvider apiKey={apiKey}>
+          <Map
+            defaultCenter={center}
+            defaultZoom={13}
+            mapId="dog-parking-map"
+            style={{ width: '100%', height: '100%' }}
+            gestureHandling="greedy"
+            disableDefaultUI={true}
+            zoomControl={false}
+            mapTypeControl={false}
+            scaleControl={false}
+            streetViewControl={false}
+            rotateControl={false}
+            fullscreenControl={false}
+          >
+            {mockVenues.map((venue) => (
+              <AdvancedMarker
+                key={venue.id}
+                position={venue.coordinates}
+                onClick={() => handleVenueClick(venue)}
+              >
+                <Pin
+                  background={selectedVenue === venue.id ? '#4f46e5' : '#f97316'}
+                  borderColor={selectedVenue === venue.id ? '#312e81' : '#c2410c'}
+                  glyphColor="#fff"
+                  scale={selectedVenue === venue.id ? 1.2 : 1}
+                />
+              </AdvancedMarker>
+            ))}
+          </Map>
+        </APIProvider>
       </div>
-      
-      {/* Mock map markers */}
-      <div className="absolute top-20 left-20">
-        <Button
-          variant={selectedVenue === '1' ? 'default' : 'secondary'}
-          size="sm"
-          className="rounded-full h-8 w-8 p-0"
-          onClick={() => handleVenueClick(mockVenues[0])}
-        >
-          1
-        </Button>
-      </div>
-      <div className="absolute top-32 right-32">
-        <Button
-          variant={selectedVenue === '2' ? 'default' : 'secondary'}
-          size="sm"
-          className="rounded-full h-8 w-8 p-0"
-          onClick={() => handleVenueClick(mockVenues[1])}
-        >
-          2
-        </Button>
-      </div>
-      <div className="absolute bottom-20 left-1/2">
-        <Button
-          variant={selectedVenue === '3' ? 'default' : 'secondary'}
-          size="sm"
-          className="rounded-full h-8 w-8 p-0"
-          onClick={() => handleVenueClick(mockVenues[2])}
-        >
-          3
-        </Button>
-      </div>
-      <div className="absolute top-1/2 left-1/4">
-        <Button
-          variant={selectedVenue === '4' ? 'default' : 'secondary'}
-          size="sm"
-          className="rounded-full h-8 w-8 p-0"
-          onClick={() => handleVenueClick(mockVenues[3])}
-        >
-          4
-        </Button>
-      </div>
-      <div className="absolute bottom-1/3 right-1/4">
-        <Button
-          variant={selectedVenue === '5' ? 'default' : 'secondary'}
-          size="sm"
-          className="rounded-full h-8 w-8 p-0"
-          onClick={() => handleVenueClick(mockVenues[4])}
-        >
-          5
-        </Button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const VenueList = () => (
     <div className={`space-y-4 ${isMobile ? '' : 'w-96 max-h-full overflow-y-auto'}`}>
@@ -248,9 +225,9 @@ export function MapView({ onVenueSelect }: MapViewProps) {
     );
   }
 
-  // Desktop layout (unchanged)
+  // Desktop layout
   return (
-    <div className="flex h-full">
+    <div className="flex h-full gap-4 p-4">
       <MapComponent />
       <VenueList />
     </div>

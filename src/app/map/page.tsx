@@ -91,9 +91,9 @@ export default function MapPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50 flex-shrink-0">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
@@ -213,9 +213,9 @@ export default function MapPage() {
       </header>
 
       {/* Main Content */}
-      <main className={`flex-1 ${currentView === 'map' ? 'relative' : 'container mx-auto px-4 py-6'}`}>
+      <main className={`flex-1 overflow-hidden ${currentView === 'map' ? 'relative' : 'container mx-auto px-4 py-6 overflow-y-auto'}`}>
         {currentView === 'map' && (
-          <div className="h-full md:container md:mx-auto md:px-4 md:py-6">
+          <div className="h-full w-full">
             <MapView onVenueSelect={handleVenueSelect} />
           </div>
         )}
@@ -233,9 +233,9 @@ export default function MapPage() {
         )}
       </main>
 
-      {/* Footer - Hidden on mobile map view */}
-      {!(isMobile && currentView === 'map') && (
-        <footer className="border-t bg-card/30 py-8">
+      {/* Footer - Hidden on map view */}
+      {currentView !== 'map' && (
+        <footer className="border-t bg-card/30 py-8 flex-shrink-0">
           <div className="container mx-auto px-4">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-2">
