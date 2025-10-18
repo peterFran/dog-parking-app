@@ -1,98 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { MapPin, Clock, Users, Star } from 'lucide-react';
+import { MapPin, Clock, Users, Star, Loader2, AlertCircle } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { BottomDrawer } from './BottomDrawer';
 import { useIsMobile } from './ui/use-mobile';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
-
-interface Venue {
-  id: string;
-  name: string;
-  address: string;
-  rating: number;
-  pricePerHour: number;
-  availableSlots: number;
-  distance: string;
-  image: string;
-  specialties: string[];
-  coordinates: { lat: number; lng: number };
-}
-
-const mockVenues: Venue[] = [
-  {
-    id: '1',
-    name: 'Liverpool Street',
-    address: 'Liverpool Street, City of London',
-    rating: 4.8,
-    pricePerHour: 25,
-    availableSlots: 8,
-    distance: '0.3 mi',
-    image: 'https://images.unsplash.com/photo-1748915948966-a0f1d7691585?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkb2clMjBkYXljYXJlJTIwZmFjaWxpdHl8ZW58MXx8fHwxNzU2NzE2MjUzfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    specialties: ['Small Dogs', 'Socialization'],
-    coordinates: { lat: 51.5174, lng: -0.0778 }
-  },
-  {
-    id: '2',
-    name: 'Strand',
-    address: 'Strand, Westminster',
-    rating: 4.6,
-    pricePerHour: 30,
-    availableSlots: 5,
-    distance: '0.7 mi',
-    image: 'https://images.unsplash.com/photo-1702489899194-ba1c1a3dec79?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBwZXQlMjBjYXJlJTIwY2VudGVyfGVufDF8fHx8MTc1NjcxNjI1NHww&ixlib=rb-4.1.0&q=80&w=1080',
-    specialties: ['Large Dogs', 'Grooming'],
-    coordinates: { lat: 51.5081, lng: -0.1208 }
-  },
-  {
-    id: '3',
-    name: 'Oxford Street',
-    address: 'Oxford Street, Fitzrovia',
-    rating: 4.9,
-    pricePerHour: 35,
-    availableSlots: 12,
-    distance: '1.2 mi',
-    image: 'https://images.unsplash.com/photo-1650062417263-5b5633237ad7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMGRvZ3MlMjBwbGF5aW5nfGVufDF8fHx8MTc1NjcxNjI1NXww&ixlib=rb-4.1.0&q=80&w=1080',
-    specialties: ['All Sizes', 'Training', 'Swimming'],
-    coordinates: { lat: 51.5154, lng: -0.1423 }
-  },
-  {
-    id: '4',
-    name: 'King\'s Road',
-    address: 'King\'s Road, Chelsea',
-    rating: 4.7,
-    pricePerHour: 40,
-    availableSlots: 6,
-    distance: '1.5 mi',
-    image: 'https://images.unsplash.com/photo-1748915948966-a0f1d7691585?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkb2clMjBkYXljYXJlJTIwZmFjaWxpdHl8ZW58MXx8fHwxNzU2NzE2MjUzfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    specialties: ['Luxury Care', 'Behavioural Training'],
-    coordinates: { lat: 51.4877, lng: -0.1690 }
-  },
-  {
-    id: '5',
-    name: 'Regent Street',
-    address: 'Regent Street, Mayfair',
-    rating: 4.5,
-    pricePerHour: 28,
-    availableSlots: 9,
-    distance: '0.9 mi',
-    image: 'https://images.unsplash.com/photo-1702489899194-ba1c1a3dec79?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBwZXQlMjBjYXJlJTIwY2VudGVyfGVufDF8fHx8MTc1NjcxNjI1NHww&ixlib=rb-4.1.0&q=80&w=1080',
-    specialties: ['Puppy Care', 'Senior Dogs'],
-    coordinates: { lat: 51.5156, lng: -0.1427 }
-  }
-];
+import { useVenues } from '../hooks/useApi';
+import { enrichVenues, EnrichedVenue } from '../lib/venue-enrichment';
 
 interface MapViewProps {
-  onVenueSelect: (venue: Venue) => void;
+  onVenueSelect: (venue: EnrichedVenue) => void;
 }
 
 export function MapView({ onVenueSelect }: MapViewProps) {
   const [selectedVenue, setSelectedVenue] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
-  const handleVenueClick = (venue: Venue) => {
+  // Fetch venues from API
+  const { data: apiVenues = [], isLoading, error } = useVenues();
+
+  // Default user location (London center) - in production, use geolocation API
+  const userLocation = { lat: 51.5074, lng: -0.1278 };
+
+  // Enrich venues with mock data for missing fields
+  const venues = useMemo(() =>
+    enrichVenues(apiVenues, userLocation),
+    [apiVenues]
+  );
+
+  const handleVenueClick = (venue: EnrichedVenue) => {
     setSelectedVenue(venue.id);
     onVenueSelect(venue);
   };
@@ -119,10 +57,10 @@ export function MapView({ onVenueSelect }: MapViewProps) {
             rotateControl={false}
             fullscreenControl={false}
           >
-            {mockVenues.map((venue) => (
+            {venues.map((venue) => (
               <AdvancedMarker
                 key={venue.id}
-                position={venue.coordinates}
+                position={{ lat: venue.latitude, lng: venue.longitude }}
                 onClick={() => handleVenueClick(venue)}
               >
                 <Pin
@@ -139,10 +77,39 @@ export function MapView({ onVenueSelect }: MapViewProps) {
     );
   };
 
-  const VenueList = () => (
-    <div className={`space-y-4 ${isMobile ? '' : 'w-96 max-h-full overflow-y-auto'}`}>
-      {!isMobile && <h3 className="font-medium mb-4">Available Venues</h3>}
-      {mockVenues.map((venue) => (
+  const VenueList = () => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-muted-foreground">Loading venues...</span>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex flex-col items-center justify-center py-8">
+          <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+          <p className="text-sm text-muted-foreground">Failed to load venues</p>
+          <p className="text-xs text-muted-foreground">{error.message}</p>
+        </div>
+      );
+    }
+
+    if (venues.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-8">
+          <MapPin className="h-8 w-8 text-muted-foreground mb-2" />
+          <p className="text-sm text-muted-foreground">No venues available</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className={`space-y-4 ${isMobile ? '' : 'w-96 max-h-full overflow-y-auto'}`}>
+        {!isMobile && <h3 className="font-medium mb-4">Available Venues</h3>}
+        {venues.map((venue) => (
         <Card 
           key={venue.id}
           className={`cursor-pointer transition-all hover:shadow-md ${
@@ -185,9 +152,9 @@ export function MapView({ onVenueSelect }: MapViewProps) {
             </div>
 
             <div className="flex flex-wrap gap-1 mb-3">
-              {venue.specialties.map((specialty) => (
-                <Badge key={specialty} variant="secondary" className="text-xs">
-                  {specialty}
+              {venue.services?.map((service) => (
+                <Badge key={service} variant="secondary" className="text-xs">
+                  {service}
                 </Badge>
               ))}
             </div>
@@ -206,7 +173,8 @@ export function MapView({ onVenueSelect }: MapViewProps) {
         </Card>
       ))}
     </div>
-  );
+    );
+  };
 
   if (isMobile) {
     return (
@@ -217,7 +185,7 @@ export function MapView({ onVenueSelect }: MapViewProps) {
         {/* Bottom drawer with venue list */}
         <BottomDrawer>
           <div className="py-4">
-            <h3 className="font-medium mb-4 px-1">Available Venues ({mockVenues.length})</h3>
+            <h3 className="font-medium mb-4 px-1">Available Venues ({venues.length})</h3>
             <VenueList />
           </div>
         </BottomDrawer>

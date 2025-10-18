@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
 import { usePathname } from 'next/navigation';
-import { AppHeader } from './AppHeader';
+import React from 'react';
+
 import { AppFooter } from './AppFooter';
+import { AppHeader } from './AppHeader';
 import { useIsMobile } from './ui/use-mobile';
 
 interface AppLayoutProps {

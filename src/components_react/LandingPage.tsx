@@ -1,25 +1,24 @@
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { 
-  Heart, 
-  MapPin, 
-  Clock, 
-  Shield, 
-  Star, 
-  Check,
-  Users,
+import {
+  ArrowRight,
   Award,
+  Check,
+  Clock,
+  Heart,
+  MapPin,
+  Shield,
   Smartphone,
-  ArrowRight
+  Star,
+  Users
 } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import { AuthModal } from './AuthModal';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../contexts/AuthContext';
+import { AuthModal } from './AuthModal';
+import { ImageWithFallback } from './figma/ImageWithFallback';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 interface PricingTier {
   id: string;
@@ -97,15 +96,14 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
     if (provider === 'google') {
       try {
         await signInWithGoogle();
-        // On successful Google auth, redirect to find-care page
-        router.push('/find-care');
+        router.push('/find-care')
       } catch (error) {
         console.error('Google sign-in failed:', error);
         // Could show error toast here in the future
       }
     }
     // Apple login does nothing (as requested)
-  };
+  }
 
   const handleEmailAuth = () => {
     // Email auth does nothing (as requested)

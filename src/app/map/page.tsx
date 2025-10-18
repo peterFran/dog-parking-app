@@ -7,11 +7,11 @@ import { UserDashboard } from '../../components_react/UserDashboard';
 import { Button } from '../../components_react/ui/button';
 import { Badge } from '../../components_react/ui/badge';
 import { Separator } from '../../components_react/ui/separator';
-import { 
-  Map, 
-  User, 
-  Heart, 
-  Search, 
+import {
+  Map,
+  User,
+  Heart,
+  Search,
   Bell,
   Menu,
   X,
@@ -20,19 +20,7 @@ import {
 import { useIsMobile } from '../../components_react/ui/use-mobile';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-
-interface Venue {
-  id: string;
-  name: string;
-  address: string;
-  rating: number;
-  pricePerHour: number;
-  availableSlots: number;
-  distance: string;
-  image: string;
-  specialties: string[];
-  coordinates: { lat: number; lng: number };
-}
+import { EnrichedVenue } from '../../lib/venue-enrichment';
 
 interface TimeSlot {
   id: string;
@@ -49,7 +37,7 @@ export default function MapPage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const [currentView, setCurrentView] = useState<ViewType>('map');
-  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
+  const [selectedVenue, setSelectedVenue] = useState<EnrichedVenue | null>(null);
   const [userPoints] = useState(150);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
@@ -65,12 +53,12 @@ export default function MapPage() {
     return null; // Will redirect
   }
 
-  const handleVenueSelect = (venue: Venue) => {
+  const handleVenueSelect = (venue: EnrichedVenue) => {
     setSelectedVenue(venue);
     setCurrentView('venue-detail');
   };
 
-  const handleBookSlot = (venue: Venue, slot: TimeSlot) => {
+  const handleBookSlot = (venue: EnrichedVenue, slot: TimeSlot) => {
     // In a real app, this would make an API call to book the slot
     alert(`Booking ${slot.duration} at ${venue.name} for ${slot.points} points!`);
     setCurrentView('dashboard');

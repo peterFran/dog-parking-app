@@ -1,9 +1,8 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '../lib/api-client';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
-import { Dog, CreateDogRequest } from '../types/dog';
+import { apiClient, BookingRequest, BookingUpdateRequest, Dog, DogRequest, OwnerProfileRequest } from '../lib/api-client';
 
 // Query Keys
 export const QueryKeys = {
@@ -33,11 +32,11 @@ export function useVenue(id: string) {
   });
 }
 
-export function useVenueSlots(id: string) {
+export function useVenueSlots(venueId: string, startDate: string, endDate?: string) {
   return useQuery({
-    queryKey: QueryKeys.venueSlots(id),
-    queryFn: () => apiClient.getVenueSlots(id),
-    enabled: !!id,
+    queryKey: QueryKeys.venueSlots(venueId),
+    queryFn: () => apiClient.getVenueSlots(venueId, startDate, endDate),
+    enabled: !!venueId && !!startDate,
   });
 }
 
@@ -61,8 +60,9 @@ export function useRegisterOwner() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: OwnerProfileRequest) => {
       const token = await getIdToken();
+      console.log(token);
       if (!token) throw new Error('No auth token');
       return apiClient.registerOwner(data, token);
     },
@@ -77,7 +77,7 @@ export function useUpdateOwnerProfile() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: OwnerProfileRequest) => {
       const token = await getIdToken();
       if (!token) throw new Error('No auth token');
       return apiClient.updateOwnerProfile(data, token);
@@ -120,8 +120,8 @@ export function useCreateDog() {
   const { getIdToken } = useAuth();
   const queryClient = useQueryClient();
 
-  return useMutation<Dog, Error, CreateDogRequest>({
-    mutationFn: async (data: CreateDogRequest) => {
+  return useMutation<Dog, Error, DogRequest>({
+    mutationFn: async (data: DogRequest) => {
       const token = await getIdToken();
       if (!token) throw new Error('No auth token');
       return apiClient.createDog(data, token);
@@ -137,7 +137,7 @@ export function useUpdateDog() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: Partial<DogRequest> }) => {
       const token = await getIdToken();
       if (!token) throw new Error('No auth token');
       return apiClient.updateDog(id, data, token);
@@ -198,7 +198,7 @@ export function useCreateBooking() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: BookingRequest) => {
       const token = await getIdToken();
       if (!token) throw new Error('No auth token');
       return apiClient.createBooking(data, token);
@@ -214,7 +214,7 @@ export function useUpdateBooking() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: BookingUpdateRequest }) => {
       const token = await getIdToken();
       if (!token) throw new Error('No auth token');
       return apiClient.updateBooking(id, data, token);
