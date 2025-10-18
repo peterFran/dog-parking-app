@@ -21,11 +21,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Separator } from './ui/separator';
 import { Switch } from './ui/switch';
 import { Textarea } from './ui/textarea';
-import { DogForUI } from '../types/dog';
+import { DogRequest } from '../lib/api-client';
 
 interface AddDogModalProps {
   children: React.ReactNode;
-  onAddDog: (dog: Omit<DogForUI, 'id' | 'age'>) => Promise<void>;
+  onAddDog: (dog: DogRequest) => Promise<void>;
   isSubmitting?: boolean;
 }
 
@@ -47,7 +47,7 @@ export function AddDogModal({ children, onAddDog, isSubmitting = false }: AddDog
   const [formData, setFormData] = useState({
     name: '',
     breed: '',
-    size: 'Medium' as 'Small' | 'Medium' | 'Large',
+    size: 'MEDIUM' as 'SMALL' | 'MEDIUM' | 'LARGE' | 'XLARGE',
     birthDate: '',
     vaccinated: true,
     microchipped: false,
@@ -98,18 +98,17 @@ export function AddDogModal({ children, onAddDog, isSubmitting = false }: AddDog
   };
 
   const handleSubmit = async () => {
-    const dogData: Omit<DogForUI, 'id' | 'age'> = {
+    const dogData: DogRequest = {
       name: formData.name,
       breed: formData.breed,
-      birthDate: formData.birthDate,
+      date_of_birth: formData.birthDate,
       size: formData.size,
-      vaccinated: formData.vaccinated,
+      vaccination_status: formData.vaccinated ? 'VACCINATED' : 'NOT_VACCINATED',
       microchipped: formData.microchipped,
-      image: formData.image || `https://images.unsplash.com/photo-1561037404-61cd46aa615b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx8fDE3NTY3MDI5MTl8MA&ixlib=rb-4.1.0&q=80&w=1080`,
-      specialNeeds: formData.specialNeeds,
-      medicalNotes: formData.medicalNotes,
-      behaviorNotes: formData.behaviorNotes,
-      favoriteActivities: formData.favoriteActivities
+      special_needs: formData.specialNeeds,
+      medical_notes: formData.medicalNotes,
+      behavior_notes: formData.behaviorNotes,
+      favorite_activities: formData.favoriteActivities.join(', ')
     };
 
     try {
@@ -120,7 +119,7 @@ export function AddDogModal({ children, onAddDog, isSubmitting = false }: AddDog
       setFormData({
         name: '',
         breed: '',
-        size: 'Medium',
+        size: 'MEDIUM',
         birthDate: '',
         vaccinated: true,
         microchipped: false,
@@ -302,28 +301,35 @@ export function AddDogModal({ children, onAddDog, isSubmitting = false }: AddDog
                   </Label>
                   <RadioGroup
                     value={formData.size}
-                    onValueChange={(value) => handleInputChange('size', value as 'Small' | 'Medium' | 'Large')}
+                    onValueChange={(value) => handleInputChange('size', value as 'SMALL' | 'MEDIUM' | 'LARGE' | 'XLARGE')}
                   >
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-4 gap-3">
                       <Label className="flex flex-col items-center gap-2 p-4 border rounded-lg cursor-pointer hover:bg-muted/50">
-                        <RadioGroupItem value="Small" />
+                        <RadioGroupItem value="SMALL" />
                         <div className="text-center">
                           <p className="font-medium">Small</p>
                           <p className="text-xs text-muted-foreground">Under 25 lbs</p>
                         </div>
                       </Label>
                       <Label className="flex flex-col items-center gap-2 p-4 border rounded-lg cursor-pointer hover:bg-muted/50">
-                        <RadioGroupItem value="Medium" />
+                        <RadioGroupItem value="MEDIUM" />
                         <div className="text-center">
                           <p className="font-medium">Medium</p>
                           <p className="text-xs text-muted-foreground">25-60 lbs</p>
                         </div>
                       </Label>
                       <Label className="flex flex-col items-center gap-2 p-4 border rounded-lg cursor-pointer hover:bg-muted/50">
-                        <RadioGroupItem value="Large" />
+                        <RadioGroupItem value="LARGE" />
                         <div className="text-center">
                           <p className="font-medium">Large</p>
-                          <p className="text-xs text-muted-foreground">Over 60 lbs</p>
+                          <p className="text-xs text-muted-foreground">60-100 lbs</p>
+                        </div>
+                      </Label>
+                      <Label className="flex flex-col items-center gap-2 p-4 border rounded-lg cursor-pointer hover:bg-muted/50">
+                        <RadioGroupItem value="XLARGE" />
+                        <div className="text-center">
+                          <p className="font-medium">XLarge</p>
+                          <p className="text-xs text-muted-foreground">Over 100 lbs</p>
                         </div>
                       </Label>
                     </div>

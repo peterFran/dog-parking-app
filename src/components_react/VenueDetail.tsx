@@ -5,6 +5,7 @@ import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { ArrowLeft, Star, MapPin, Phone, Clock, Users, Wifi, Car, Heart } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { EnrichedVenue } from '../lib/venue-enrichment';
 
 interface TimeSlot {
   id: string;
@@ -13,22 +14,6 @@ interface TimeSlot {
   points: number;
   available: boolean;
   spotsLeft: number;
-}
-
-interface Venue {
-  id: string;
-  name: string;
-  address: string;
-  rating: number;
-  pricePerHour: number;
-  availableSlots: number;
-  distance: string;
-  image: string;
-  specialties: string[];
-  coordinates: { lat: number; lng: number };
-  phone?: string;
-  description?: string;
-  amenities?: string[];
 }
 
 const mockTimeSlots: TimeSlot[] = [
@@ -40,9 +25,9 @@ const mockTimeSlots: TimeSlot[] = [
 ];
 
 interface VenueDetailProps {
-  venue: Venue;
+  venue: EnrichedVenue;
   onBack: () => void;
-  onBookSlot: (venue: Venue, slot: TimeSlot) => void;
+  onBookSlot: (venue: EnrichedVenue, slot: TimeSlot) => void;
 }
 
 export function VenueDetail({ venue, onBack, onBookSlot }: VenueDetailProps) {
@@ -114,11 +99,11 @@ export function VenueDetail({ venue, onBack, onBookSlot }: VenueDetailProps) {
               </p>
               
               <div className="mt-4">
-                <h4 className="font-medium mb-2">Specialties</h4>
+                <h4 className="font-medium mb-2">Services</h4>
                 <div className="flex flex-wrap gap-2">
-                  {extendedVenue.specialties.map((specialty) => (
-                    <Badge key={specialty} variant="secondary">
-                      {specialty}
+                  {venue.services?.map((service) => (
+                    <Badge key={service} variant="secondary">
+                      {service}
                     </Badge>
                   ))}
                 </div>

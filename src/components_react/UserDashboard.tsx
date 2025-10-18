@@ -1,29 +1,26 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Progress } from './ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import {
-  Plus,
-  CreditCard,
+  AlertCircle,
+  Award,
   Calendar,
   Clock,
-  MapPin,
-  Star,
+  CreditCard,
   Edit,
-  Settings,
   Heart,
-  Award,
   Loader2,
-  AlertCircle
+  Plus,
+  Star
 } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useCreateDog, useDogs } from '../hooks/useApi';
+import { DogRequest } from '../lib/api-client';
 import { AddDogModal } from './AddDogModal';
-import { useDogs, useCreateDog } from '../hooks/useApi';
-import { transformDogForUI, transformDogForAPI, DogForUI } from '../types/dog';
+import { Avatar, AvatarFallback } from './ui/avatar';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Progress } from './ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useToast } from './ui/toast';
 
 
@@ -88,11 +85,8 @@ export function UserDashboard() {
   const { addToast } = useToast();
 
   // Real API hooks
-  const { data: apiDogs = [], isLoading: dogsLoading, error: dogsError } = useDogs();
+  const { data: dogs = [], isLoading: dogsLoading, error: dogsError } = useDogs();
   const createDogMutation = useCreateDog();
-
-  // Transform API dogs for UI display
-  const dogs: DogForUI[] = apiDogs.map(transformDogForUI);
 
   // Extract first name from user's display name or email
   const getUserFirstName = () => {
@@ -113,10 +107,9 @@ export function UserDashboard() {
     return 'My';
   };
 
-  const handleAddDog = async (dogData: Omit<DogForUI, 'id' | 'age'>) => {
+  const handleAddDog = async (dogData: DogRequest) => {
     try {
-      const apiData = transformDogForAPI(dogData);
-      await createDogMutation.mutateAsync(apiData);
+      await createDogMutation.mutateAsync(dogData);
       addToast({
         type: 'success',
         title: 'Dog Added Successfully!',
@@ -283,7 +276,6 @@ export function UserDashboard() {
                   dogs.map((dog) => (
                     <div key={dog.id} className="flex items-center gap-4">
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={dog.image} alt={dog.name} />
                         <AvatarFallback>{dog.name[0]}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
@@ -292,8 +284,8 @@ export function UserDashboard() {
                           {dog.breed} • {dog.age} • {dog.size}
                         </p>
                       </div>
-                      <Badge variant={dog.vaccinated ? "default" : "secondary"}>
-                        {dog.vaccinated ? "Vaccinated" : "Needs Update"}
+                      <Badge variant={dog.vaccination_status === 'VACCINATED' ? "default" : "secondary"}>
+                        {dog.vaccination_status === 'VACCINATED' ? "Vaccinated" : "Needs Update"}
                       </Badge>
                     </div>
                   ))
@@ -347,12 +339,10 @@ export function UserDashboard() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="aspect-square overflow-hidden rounded-lg">
-                      <ImageWithFallback
-                        src={dog.image}
-                        alt={dog.name}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="aspect-square overflow-hidden rounded-lg bg-gradient-to-br from-accent-sage/20 to-accent-lavender/20 flex items-center justify-center">
+                      <div className="text-6xl font-bold text-muted-foreground/30">
+                        {dog.name[0]}
+                      </div>
                     </div>
 
                     <div className="space-y-2">
@@ -370,11 +360,11 @@ export function UserDashboard() {
                       </div>
                     </div>
 
-                    {dog.specialNeeds && dog.specialNeeds.length > 0 && (
+                    {dog.special_needs && dog.special_needs.length > 0 && (
                       <div>
                         <p className="text-sm text-muted-foreground mb-2">Special Notes:</p>
                         <div className="space-y-1">
-                          {dog.specialNeeds.map((need, index) => (
+                          {dog.special_needs.map((need, index) => (
                             <p key={index} className="text-xs bg-muted/50 rounded px-2 py-1">
                               {need}
                             </p>
@@ -384,8 +374,8 @@ export function UserDashboard() {
                     )}
 
                     <div className="flex items-center justify-between pt-2">
-                      <Badge variant={dog.vaccinated ? "default" : "secondary"}>
-                        {dog.vaccinated ? "Vaccinated" : "Needs Update"}
+                      <Badge variant={dog.vaccination_status === 'VACCINATED' ? "default" : "secondary"}>
+                        {dog.vaccination_status === 'VACCINATED' ? "Vaccinated" : "Needs Update"}
                       </Badge>
                       <Button variant="outline" size="sm">
                         View Profile

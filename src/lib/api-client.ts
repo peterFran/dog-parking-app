@@ -1,11 +1,20 @@
-import { Dog, CreateDogRequest } from '../types/dog';
+import { components, operations } from '../types/api';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
 
-interface ApiError {
-  error: string;
-  message?: string;
-}
+// Type aliases for convenience
+export type Dog = components['schemas']['DogResponse'];
+export type DogRequest = components['schemas']['DogRequest'];
+export type DogListResponse = components['schemas']['DogListResponse'];
+export type OwnerProfileRequest = components['schemas']['OwnerProfileRequest'];
+export type OwnerProfileResponse = components['schemas']['OwnerProfileResponse'];
+export type BookingRequest = components['schemas']['BookingRequest'];
+export type BookingResponse = components['schemas']['BookingResponse'];
+export type BookingListResponse = components['schemas']['BookingListResponse'];
+export type BookingUpdateRequest = components['schemas']['BookingUpdateRequest'];
+export type VenueResponse = components['schemas']['VenueResponse'];
+export type VenueListResponse = components['schemas']['VenueListResponse'];
+export type ErrorResponse = components['schemas']['ErrorResponse'];
 
 class ApiClient {
   private baseUrl: string;
@@ -39,12 +48,12 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
-        const errorData: ApiError = await response.json().catch(() => ({ 
-          error: `HTTP Error ${response.status}` 
+        const errorData: ErrorResponse = await response.json().catch(() => ({
+          error: `HTTP Error ${response.status}`
         }));
-        throw new Error(errorData.message || errorData.error || `HTTP Error ${response.status}`);
+        throw new Error(errorData.error || `HTTP Error ${response.status}`);
       }
 
       return await response.json();
@@ -55,43 +64,46 @@ class ApiClient {
   }
 
   // Public endpoints (no auth required)
-  async getVenues() {
-    return this.request('/venues');
+  async getVenues(): Promise<VenueResponse[]> {
+    const response = await this.request<VenueListResponse>('/venues');
+    return response.venues;
   }
 
-  async getVenue(id: string) {
-    return this.request(`/venues/${id}`);
+  async getVenue(id: string): Promise<VenueResponse> {
+    return this.request<VenueResponse>(`/venues/${id}`);
   }
 
-  async getVenueSlots(id: string) {
-    return this.request(`/venues/${id}/slots`);
+  async getVenueSlots(venueId: string, startDate: string, endDate?: string) {
+    const params = new URLSearchParams({ start_date: startDate });
+    if (endDate) params.append('end_date', endDate);
+    return this.request(`/slots/venue/${venueId}?${params.toString()}`);
   }
 
   // Protected endpoints (auth required)
-  async registerOwner(data: any, token: string) {
-    return this.request('/owners/register', {
+  async registerOwner(data: OwnerProfileRequest, token: string): Promise<OwnerProfileResponse> {
+    return this.request<OwnerProfileResponse>('/owners/register', {
       method: 'POST',
       body: JSON.stringify(data),
     }, token);
   }
 
-  async getOwnerProfile(token: string) {
-    return this.request('/owners/profile', {}, token);
+  async getOwnerProfile(token: string): Promise<OwnerProfileResponse> {
+    return this.request<OwnerProfileResponse>('/owners/profile', {}, token);
   }
 
-  async updateOwnerProfile(data: any, token: string) {
-    return this.request('/owners/profile', {
+  async updateOwnerProfile(data: OwnerProfileRequest, token: string): Promise<OwnerProfileResponse> {
+    return this.request<OwnerProfileResponse>('/owners/profile', {
       method: 'PUT',
       body: JSON.stringify(data),
     }, token);
   }
 
   async getDogs(token: string): Promise<Dog[]> {
-    const response = await this.request<{ dogs: Dog[]; count: number }>('/dogs', {}, token);
+    const response = await this.request<DogListResponse>('/dogs', {}, token);
     return response.dogs;
   }
 
-  async createDog(data: CreateDogRequest, token: string): Promise<Dog> {
+  async createDog(data: DogRequest, token: string): Promise<Dog> {
     return this.request<Dog>('/dogs', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -102,43 +114,44 @@ class ApiClient {
     return this.request<Dog>(`/dogs/${id}`, {}, token);
   }
 
-  async updateDog(id: string, data: Partial<CreateDogRequest>, token: string): Promise<Dog> {
+  async updateDog(id: string, data: Partial<DogRequest>, token: string): Promise<Dog> {
     return this.request<Dog>(`/dogs/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }, token);
   }
 
-  async deleteDog(id: string, token: string) {
-    return this.request(`/dogs/${id}`, {
+  async deleteDog(id: string, token: string): Promise<void> {
+    return this.request<void>(`/dogs/${id}`, {
       method: 'DELETE',
     }, token);
   }
 
-  async getBookings(token: string) {
-    return this.request('/bookings', {}, token);
+  async getBookings(token: string): Promise<BookingResponse[]> {
+    const response = await this.request<BookingListResponse>('/bookings', {}, token);
+    return response.bookings;
   }
 
-  async createBooking(data: any, token: string) {
-    return this.request('/bookings', {
+  async createBooking(data: BookingRequest, token: string): Promise<BookingResponse> {
+    return this.request<BookingResponse>('/bookings', {
       method: 'POST',
       body: JSON.stringify(data),
     }, token);
   }
 
-  async getBooking(id: string, token: string) {
-    return this.request(`/bookings/${id}`, {}, token);
+  async getBooking(id: string, token: string): Promise<BookingResponse> {
+    return this.request<BookingResponse>(`/bookings/${id}`, {}, token);
   }
 
-  async updateBooking(id: string, data: any, token: string) {
-    return this.request(`/bookings/${id}`, {
+  async updateBooking(id: string, data: BookingUpdateRequest, token: string): Promise<BookingResponse> {
+    return this.request<BookingResponse>(`/bookings/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }, token);
   }
 
-  async cancelBooking(id: string, token: string) {
-    return this.request(`/bookings/${id}`, {
+  async cancelBooking(id: string, token: string): Promise<BookingResponse> {
+    return this.request<BookingResponse>(`/bookings/${id}`, {
       method: 'DELETE',
     }, token);
   }
