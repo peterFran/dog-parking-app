@@ -13,7 +13,11 @@ export type BookingResponse = components['schemas']['BookingResponse'];
 export type BookingListResponse = components['schemas']['BookingListResponse'];
 export type BookingUpdateRequest = components['schemas']['BookingUpdateRequest'];
 export type VenueResponse = components['schemas']['VenueResponse'];
+export type VenueRequest = components['schemas']['VenueRequest'];
 export type VenueListResponse = components['schemas']['VenueListResponse'];
+export type ServiceType = components['schemas']['ServiceType'];
+export type OperatingHours = components['schemas']['OperatingHours'];
+export type DayHours = components['schemas']['DayHours'];
 export type ErrorResponse = components['schemas']['ErrorResponse'];
 
 class ApiClient {
@@ -77,6 +81,13 @@ class ApiClient {
     const params = new URLSearchParams({ start_date: startDate });
     if (endDate) params.append('end_date', endDate);
     return this.request(`/slots/venue/${venueId}?${params.toString()}`);
+  }
+
+  async createVenue(data: VenueRequest, token: string): Promise<VenueResponse> {
+    return this.request<VenueResponse>('/venues', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }, token);
   }
 
   // Protected endpoints (auth required)
