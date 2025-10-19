@@ -32,15 +32,15 @@ export function MapView({ onVenueSelect }: MapViewProps) {
     try {
       await createVenueMutation.mutateAsync(venue);
       addToast({
+        type: 'success',
         title: 'Success!',
-        description: 'Venue added successfully',
-        variant: 'default'
+        description: 'Venue added successfully'
       });
     } catch (error) {
       addToast({
+        type: 'error',
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to add venue',
-        variant: 'destructive'
+        description: error instanceof Error ? error.message : 'Failed to add venue'
       });
       throw error;
     }
