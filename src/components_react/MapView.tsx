@@ -2,13 +2,16 @@ import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { MapPin, Clock, Users, Star, Loader2, AlertCircle } from 'lucide-react';
+import { MapPin, Clock, Users, Star, Loader2, AlertCircle, Plus } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { BottomDrawer } from './BottomDrawer';
 import { useIsMobile } from './ui/use-mobile';
 import { APIProvider, Map, AdvancedMarker, Pin } from '@vis.gl/react-google-maps';
-import { useVenues } from '../hooks/useApi';
+import { useVenues, useCreateVenue } from '../hooks/useApi';
 import { enrichVenues, EnrichedVenue } from '../lib/venue-enrichment';
+import { AddVenueModal } from './AddVenueModal';
+import { VenueRequest } from '../lib/api-client';
+import { useToast } from './ui/toast';
 
 interface MapViewProps {
   onVenueSelect: (venue: EnrichedVenue) => void;
@@ -17,9 +20,31 @@ interface MapViewProps {
 export function MapView({ onVenueSelect }: MapViewProps) {
   const [selectedVenue, setSelectedVenue] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const { addToast } = useToast();
 
   // Fetch venues from API
   const { data: apiVenues = [], isLoading, error } = useVenues();
+
+  // Create venue mutation
+  const createVenueMutation = useCreateVenue();
+
+  const handleAddVenue = async (venue: VenueRequest) => {
+    try {
+      await createVenueMutation.mutateAsync(venue);
+      addToast({
+        type: 'success',
+        title: 'Success!',
+        description: 'Venue added successfully'
+      });
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to add venue'
+      });
+      throw error;
+    }
+  };
 
   // Default user location (London center) - in production, use geolocation API
   const userLocation = { lat: 51.5074, lng: -0.1278 };
@@ -73,6 +98,19 @@ export function MapView({ onVenueSelect }: MapViewProps) {
             ))}
           </Map>
         </APIProvider>
+
+        {/* Add Venue Button - Floating over map */}
+        <div className="absolute top-4 right-4 z-10">
+          <AddVenueModal
+            onAddVenue={handleAddVenue}
+            isSubmitting={createVenueMutation.isPending}
+          >
+            <Button size="sm" className="shadow-lg">
+              <Plus className="h-4 w-4 mr-1" />
+              Add Venue
+            </Button>
+          </AddVenueModal>
+        </div>
       </div>
     );
   };

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
-import { apiClient, BookingRequest, BookingUpdateRequest, Dog, DogRequest, OwnerProfileRequest } from '../lib/api-client';
+import { apiClient, BookingRequest, BookingUpdateRequest, Dog, DogRequest, OwnerProfileRequest, VenueRequest, VenueResponse } from '../lib/api-client';
 
 // Query Keys
 export const QueryKeys = {
@@ -238,6 +238,22 @@ export function useCancelBooking() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QueryKeys.bookings });
+    },
+  });
+}
+
+export function useCreateVenue() {
+  const { getIdToken } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation<VenueResponse, Error, VenueRequest>({
+    mutationFn: async (data: VenueRequest) => {
+      const token = await getIdToken();
+      if (!token) throw new Error('No auth token');
+      return apiClient.createVenue(data, token);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QueryKeys.venues });
     },
   });
 }
