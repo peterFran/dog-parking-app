@@ -1,11 +1,6 @@
 import { components, operations } from '../types/api';
 
-// Use proxy for development to avoid CORS issues
-const IS_BROWSER = typeof window !== 'undefined';
-const USE_PROXY = IS_BROWSER && window.location.hostname === 'localhost';
-const API_BASE_URL = USE_PROXY
-  ? '/api/proxy'  // Use Next.js API proxy to bypass CORS in development
-  : (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000');
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000';
 
 // Type aliases for convenience
 export type Dog = components['schemas']['DogResponse'];
@@ -20,6 +15,7 @@ export type BookingUpdateRequest = components['schemas']['BookingUpdateRequest']
 export type VenueResponse = components['schemas']['VenueResponse'];
 export type VenueRequest = components['schemas']['VenueRequest'];
 export type VenueListResponse = components['schemas']['VenueListResponse'];
+export type VenueSlotsResponse = components['schemas']['VenueSlotsResponse'];
 export type ServiceType = components['schemas']['ServiceType'];
 export type OperatingHours = components['schemas']['OperatingHours'];
 export type DayHours = components['schemas']['DayHours'];
@@ -84,10 +80,10 @@ class ApiClient {
     return this.request<VenueResponse>(`/venues/${id}`);
   }
 
-  async getVenueSlots(venueId: string, startDate: string, endDate?: string) {
+  async getVenueSlots(venueId: string, startDate: string, endDate?: string): Promise<VenueSlotsResponse> {
     const params = new URLSearchParams({ start_date: startDate });
     if (endDate) params.append('end_date', endDate);
-    return this.request(`/slots/venue/${venueId}?${params.toString()}`);
+    return this.request<VenueSlotsResponse>(`/slots/venue/${venueId}?${params.toString()}`);
   }
 
   async createVenue(data: VenueRequest, token: string): Promise<VenueResponse> {
