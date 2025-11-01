@@ -7,6 +7,7 @@ import { UserDashboard } from '../../components_react/UserDashboard';
 import { Button } from '../../components_react/ui/button';
 import { Badge } from '../../components_react/ui/badge';
 import { Separator } from '../../components_react/ui/separator';
+import { useToast } from '../../components_react/ui/toast';
 import {
   Map,
   User,
@@ -21,6 +22,7 @@ import { useIsMobile } from '../../components_react/ui/use-mobile';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { EnrichedVenue } from '../../lib/venue-enrichment';
+import { useCreateBooking } from '../../hooks/useApi';
 
 interface TimeSlot {
   id: string;
@@ -36,11 +38,15 @@ type ViewType = 'map' | 'venue-detail' | 'dashboard';
 export default function MapPage() {
   const { user, signOut } = useAuth();
   const router = useRouter();
+  const { addToast } = useToast();
   const [currentView, setCurrentView] = useState<ViewType>('map');
   const [selectedVenue, setSelectedVenue] = useState<EnrichedVenue | null>(null);
   const [userPoints] = useState(150);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+
+  // API mutations
+  const createBookingMutation = useCreateBooking();
 
   // Redirect to home if not logged in
   React.useEffect(() => {
@@ -58,10 +64,56 @@ export default function MapPage() {
     setCurrentView('venue-detail');
   };
 
-  const handleBookSlot = (venue: EnrichedVenue, slot: TimeSlot) => {
-    // In a real app, this would make an API call to book the slot
-    alert(`Booking ${slot.duration} at ${venue.name} for ${slot.points} points!`);
-    setCurrentView('dashboard');
+  const handleBookSlot = async (venue: EnrichedVenue, slot: TimeSlot, dogId: string) => {
+    try {
+      // Parse the slot time and duration to create ISO timestamps
+      // For now, we'll use today's date. In a real app, this would be selected by the user
+      const today = new Date();
+      const [hours, minutes] = slot.time.replace(/\s?(AM|PM)/i, '').split(':').map(Number);
+      const isPM = /PM/i.test(slot.time);
+
+      // Create start time
+      const startTime = new Date(today);
+      startTime.setHours(isPM && hours !== 12 ? hours + 12 : hours === 12 && !isPM ? 0 : hours);
+      startTime.setMinutes(minutes);
+      startTime.setSeconds(0);
+      startTime.setMilliseconds(0);
+
+      // Calculate end time based on duration
+      const durationHours = parseInt(slot.duration.split(' ')[0]);
+      const endTime = new Date(startTime);
+      endTime.setHours(endTime.getHours() + durationHours);
+
+      // Create booking request
+      const bookingRequest = {
+        dog_id: dogId,
+        venue_id: venue.id,
+        service_type: 'daycare' as const, // Default to daycare, could be made selectable
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
+        special_instructions: ''
+      };
+
+      // Make API call
+      await createBookingMutation.mutateAsync(bookingRequest);
+
+      // Show success message
+      addToast({
+        type: 'success',
+        title: 'Booking Confirmed!',
+        description: `Your ${slot.duration} booking at ${venue.name} has been confirmed.`
+      });
+
+      // Navigate to dashboard to see the booking
+      setCurrentView('dashboard');
+    } catch (error) {
+      console.error('Booking error:', error);
+      addToast({
+        type: 'error',
+        title: 'Booking Failed',
+        description: error instanceof Error ? error.message : 'Unable to create booking. Please try again.'
+      });
+    }
   };
 
   const handleBackToMap = () => {
