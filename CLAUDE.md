@@ -14,27 +14,29 @@ This is the frontend application for the Dog Parking platform - a Next.js 15 Rea
 - Brand style guide in `/context/style-guide.md`
 - When making visual (front-end, UI/UX) changes, always refer to these files for guidance
 
-### Quick Visual Check
+### Browser Testing & Debugging
 
-IMMEDIATELY after implementing any front-end change:
+**Available Tools:**
+- **Chrome DevTools MCP** - For performance analysis, debugging, and visual inspection
+- **Playwright MCP** - For automated testing and reliable screenshots
 
-1. **Identify what changed** - Review the modified components/pages
-2. **Navigate to affected pages** - Use `mcp__playwright__browser_navigate` to visit each changed view
-3. **Verify design compliance** - Compare against `/context/design-principles.md` and `/context/style-guide.md`
-4. **Validate feature implementation** - Ensure the change fulfills the user's specific request
-5. **Check acceptance criteria** - Review any provided context files or requirements
-6. **Capture evidence** - Take full page screenshot at desktop viewport (1440px) of each changed view
-7. **Check for errors** - Run `mcp__playwright__browser_console_messages`
+**When to Use:**
+Use browser tools when the user requests:
+- Visual review or screenshots
+- Performance analysis (Core Web Vitals, LCP, CLS, FCP)
+- Debugging (console errors, network issues)
+- Responsive design verification
+- Accessibility checks
 
-This verification ensures changes meet design standards and user requirements.
+**Do not** automatically run browser tools after every change. Wait for explicit user request.
 
 ### Comprehensive Design Review
 
-Invoke the `@agent-design-review` subagent for thorough design validation when:
+Invoke the `@agent-design-review` subagent for thorough design validation when the user requests:
 
-- Completing significant UI/UX features
-- Before finalizing PRs with visual changes
-- Needing comprehensive accessibility and responsiveness testing
+- Comprehensive review of UI/UX features
+- PR review with visual changes
+- Accessibility and responsiveness testing
 
 ## Development Commands
 

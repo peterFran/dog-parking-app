@@ -10,10 +10,10 @@ import {
   Plus,
   Star
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useCreateDog, useDogs } from '../hooks/useApi';
-import { DogRequest } from '../lib/api-client';
+import { useBookings, useCreateDog, useDogs, useVenues } from '../hooks/useApi';
+import { BookingResponse, DogRequest } from '../lib/api-client';
 import { AddDogModal } from './AddDogModal';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
@@ -24,18 +24,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useToast } from './ui/toast';
 
 
-interface Booking {
-  id: string;
-  venueId: string;
-  venueName: string;
-  date: string;
-  time: string;
-  duration: string;
-  pointsUsed: number;
-  status: 'upcoming' | 'completed' | 'cancelled';
-  dogNames: string[];
-}
-
 interface PointsPackage {
   id: string;
   name: string;
@@ -44,32 +32,6 @@ interface PointsPackage {
   bonus?: number;
   popular?: boolean;
 }
-
-
-const mockBookings: Booking[] = [
-  {
-    id: '1',
-    venueId: '1',
-    venueName: 'Liverpool Street',
-    date: 'Sept 2, 2025',
-    time: '9:00 AM',
-    duration: '4 hours',
-    pointsUsed: 100,
-    status: 'upcoming',
-    dogNames: ['Buddy']
-  },
-  {
-    id: '2',
-    venueId: '2',
-    venueName: 'Strand',
-    date: 'Aug 30, 2025',
-    time: '2:00 PM',
-    duration: '2 hours',
-    pointsUsed: 60,
-    status: 'completed',
-    dogNames: ['Luna']
-  }
-];
 
 const pointsPackages: PointsPackage[] = [
   { id: '1', name: 'Starter Pack', points: 100, price: 20 },
@@ -81,11 +43,12 @@ const pointsPackages: PointsPackage[] = [
 export function UserDashboard() {
   const { user } = useAuth();
   const [currentPoints] = useState(150);
-  const [bookings] = useState(mockBookings);
   const { addToast } = useToast();
 
   // Real API hooks
   const { data: dogs = [], isLoading: dogsLoading, error: dogsError } = useDogs();
+  const { data: bookingsData = [], isLoading: bookingsLoading, error: bookingsError } = useBookings();
+  const { data: venues = [] } = useVenues();
   const createDogMutation = useCreateDog();
 
   // Extract first name from user's display name or email
@@ -125,18 +88,57 @@ export function UserDashboard() {
     }
   };
 
-  const upcomingBookings = bookings.filter(b => b.status === 'upcoming');
-  const pastBookings = bookings.filter(b => b.status === 'completed');
+  // Helper function to get venue name by ID
+  const getVenueName = (venueId: string) => {
+    const venue = venues.find(v => v.id === venueId);
+    return venue?.name || 'Unknown Venue';
+  };
 
-  // Error handling for dogs API
-  if (dogsError) {
+  // Helper function to get dog name by ID
+  const getDogName = (dogId: string) => {
+    const dog = dogs.find(d => d.id === dogId);
+    return dog?.name || 'Unknown Dog';
+  };
+
+  // Helper function to format date and time from ISO string
+  const formatDateTime = (isoString: string) => {
+    const date = new Date(isoString);
+    return {
+      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      time: date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    };
+  };
+
+  // Helper function to calculate duration between start and end times
+  const calculateDuration = (startTime: string, endTime: string) => {
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const hours = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60));
+    return `${hours} hour${hours !== 1 ? 's' : ''}`;
+  };
+
+  // Process bookings into upcoming and past
+  const upcomingBookings = useMemo(() => {
+    return bookingsData.filter((b: BookingResponse) =>
+      b.status === 'pending' || b.status === 'confirmed' || b.status === 'in_progress'
+    );
+  }, [bookingsData]);
+
+  const pastBookings = useMemo(() => {
+    return bookingsData.filter((b: BookingResponse) =>
+      b.status === 'completed' || b.status === 'cancelled'
+    );
+  }, [bookingsData]);
+
+  // Error handling for API
+  if (dogsError || bookingsError) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Card className="p-6 text-center">
           <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">Failed to Load Dogs</h3>
+          <h3 className="text-lg font-medium mb-2">Failed to Load Data</h3>
           <p className="text-muted-foreground mb-4">
-            There was an error loading your dogs. Please try again later.
+            There was an error loading your {dogsError ? 'dogs' : 'bookings'}. Please try again later.
           </p>
           <Button onClick={() => window.location.reload()}>
             Try Again
@@ -241,21 +243,29 @@ export function UserDashboard() {
                 <CardTitle>Upcoming Bookings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {upcomingBookings.length > 0 ? (
-                  upcomingBookings.map((booking) => (
-                    <div key={booking.id} className="flex items-center gap-4 p-3 rounded-lg bg-muted/30">
-                      <div className="flex-1">
-                        <p className="font-medium">{booking.venueName}</p>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                          <Calendar className="h-3 w-3" />
-                          <span>{booking.date}</span>
-                          <Clock className="h-3 w-3 ml-2" />
-                          <span>{booking.time}</span>
+                {bookingsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <span className="ml-2 text-muted-foreground">Loading bookings...</span>
+                  </div>
+                ) : upcomingBookings.length > 0 ? (
+                  upcomingBookings.map((booking) => {
+                    const { date, time } = formatDateTime(booking.start_time);
+                    return (
+                      <div key={booking.id} className="flex items-center gap-4 p-3 rounded-lg bg-muted/30">
+                        <div className="flex-1">
+                          <p className="font-medium">{getVenueName(booking.venue_id)}</p>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{date}</span>
+                            <Clock className="h-3 w-3 ml-2" />
+                            <span>{time}</span>
+                          </div>
                         </div>
+                        <Badge variant="outline">£{booking.price}</Badge>
                       </div>
-                      <Badge variant="outline">{booking.pointsUsed} points</Badge>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <p className="text-muted-foreground text-center py-4">No upcoming bookings</p>
                 )}
@@ -416,42 +426,54 @@ export function UserDashboard() {
             </TabsList>
 
             <TabsContent value="upcoming" className="space-y-4">
-              {upcomingBookings.length > 0 ? (
-                upcomingBookings.map((booking) => (
-                  <Card key={booking.id}>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-2">
-                          <h4 className="font-medium">{booking.venueName}</h4>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              <span>{booking.date}</span>
+              {bookingsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <span className="ml-3 text-muted-foreground">Loading bookings...</span>
+                </div>
+              ) : upcomingBookings.length > 0 ? (
+                upcomingBookings.map((booking) => {
+                  const { date, time } = formatDateTime(booking.start_time);
+                  const duration = calculateDuration(booking.start_time, booking.end_time);
+                  return (
+                    <Card key={booking.id}>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-2">
+                            <h4 className="font-medium">{getVenueName(booking.venue_id)}</h4>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{date}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>{time} ({duration})</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              <span>{booking.time} ({booking.duration})</span>
+                            <p className="text-sm">
+                              Dog: {getDogName(booking.dog_id)}
+                            </p>
+                            <Badge variant="secondary" className="text-xs">
+                              {booking.service_type}
+                            </Badge>
+                          </div>
+                          <div className="text-right space-y-2">
+                            <Badge variant="outline">£{booking.price}</Badge>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm">
+                                Modify
+                              </Button>
+                              <Button variant="outline" size="sm">
+                                Cancel
+                              </Button>
                             </div>
                           </div>
-                          <p className="text-sm">
-                            Dogs: {booking.dogNames.join(', ')}
-                          </p>
                         </div>
-                        <div className="text-right space-y-2">
-                          <Badge variant="outline">{booking.pointsUsed} points</Badge>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm">
-                              Modify
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              Cancel
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                      </CardContent>
+                    </Card>
+                  );
+                })
               ) : (
                 <Card>
                   <CardContent className="p-8 text-center">
@@ -464,39 +486,62 @@ export function UserDashboard() {
             </TabsContent>
 
             <TabsContent value="past" className="space-y-4">
-              {pastBookings.map((booking) => (
-                <Card key={booking.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-2">
-                        <h4 className="font-medium">{booking.venueName}</h4>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            <span>{booking.date}</span>
+              {bookingsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <span className="ml-3 text-muted-foreground">Loading bookings...</span>
+                </div>
+              ) : pastBookings.length > 0 ? (
+                pastBookings.map((booking) => {
+                  const { date, time } = formatDateTime(booking.start_time);
+                  const duration = calculateDuration(booking.start_time, booking.end_time);
+                  return (
+                    <Card key={booking.id}>
+                      <CardContent className="p-6">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-2">
+                            <h4 className="font-medium">{getVenueName(booking.venue_id)}</h4>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                <span>{date}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                <span>{time} ({duration})</span>
+                              </div>
+                            </div>
+                            <p className="text-sm">
+                              Dog: {getDogName(booking.dog_id)}
+                            </p>
+                            <Badge variant="secondary" className="text-xs">
+                              {booking.service_type}
+                            </Badge>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            <span>{booking.time} ({booking.duration})</span>
+                          <div className="text-right space-y-2">
+                            <Badge variant={booking.status === 'completed' ? 'default' : 'secondary'}>
+                              {booking.status === 'completed' ? 'Completed' : 'Cancelled'}
+                            </Badge>
+                            <p className="text-sm text-muted-foreground">
+                              £{booking.price}
+                            </p>
+                            <Button variant="outline" size="sm">
+                              Book Again
+                            </Button>
                           </div>
                         </div>
-                        <p className="text-sm">
-                          Dogs: {booking.dogNames.join(', ')}
-                        </p>
-                      </div>
-                      <div className="text-right space-y-2">
-                        <Badge variant="secondary">Completed</Badge>
-                        <p className="text-sm text-muted-foreground">
-                          {booking.pointsUsed} points used
-                        </p>
-                        <Button variant="outline" size="sm">
-                          Book Again
-                        </Button>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              ) : (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                    <p className="text-muted-foreground">No past bookings</p>
                   </CardContent>
                 </Card>
-              ))}
+              )}
             </TabsContent>
           </Tabs>
         </TabsContent>

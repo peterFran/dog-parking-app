@@ -15,6 +15,7 @@ export type BookingUpdateRequest = components['schemas']['BookingUpdateRequest']
 export type VenueResponse = components['schemas']['VenueResponse'];
 export type VenueRequest = components['schemas']['VenueRequest'];
 export type VenueListResponse = components['schemas']['VenueListResponse'];
+export type VenueSlotsResponse = components['schemas']['VenueSlotsResponse'];
 export type ServiceType = components['schemas']['ServiceType'];
 export type OperatingHours = components['schemas']['OperatingHours'];
 export type DayHours = components['schemas']['DayHours'];
@@ -33,7 +34,7 @@ class ApiClient {
     token?: string
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
@@ -51,18 +52,20 @@ class ApiClient {
     }
 
     try {
+      console.log(`[API] ${options.method || 'GET'} ${url}`);
       const response = await fetch(url, config);
 
       if (!response.ok) {
         const errorData: ErrorResponse = await response.json().catch(() => ({
           error: `HTTP Error ${response.status}`
         }));
+        console.error(`[API] Error ${response.status} for ${url}:`, errorData);
         throw new Error(errorData.error || `HTTP Error ${response.status}`);
       }
 
       return await response.json();
     } catch (error) {
-      console.error(`API Error for ${endpoint}:`, error);
+      console.error(`[API] Request failed for ${url}:`, error);
       throw error;
     }
   }
@@ -77,10 +80,10 @@ class ApiClient {
     return this.request<VenueResponse>(`/venues/${id}`);
   }
 
-  async getVenueSlots(venueId: string, startDate: string, endDate?: string) {
+  async getVenueSlots(venueId: string, startDate: string, endDate?: string): Promise<VenueSlotsResponse> {
     const params = new URLSearchParams({ start_date: startDate });
     if (endDate) params.append('end_date', endDate);
-    return this.request(`/slots/venue/${venueId}?${params.toString()}`);
+    return this.request<VenueSlotsResponse>(`/slots/venue/${venueId}?${params.toString()}`);
   }
 
   async createVenue(data: VenueRequest, token: string): Promise<VenueResponse> {

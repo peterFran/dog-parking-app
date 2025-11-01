@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
-import { ArrowLeft, Star, MapPin, Phone, Clock, Users, Wifi, Car, Heart } from 'lucide-react';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { ArrowLeft, Star, MapPin, Phone, Clock, Users, Wifi, Car, Heart, Loader2 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { EnrichedVenue } from '../lib/venue-enrichment';
+import { useDogs, useVenueSlots } from '../hooks/useApi';
 
 interface TimeSlot {
   id: string;
@@ -16,22 +19,60 @@ interface TimeSlot {
   spotsLeft: number;
 }
 
-const mockTimeSlots: TimeSlot[] = [
-  { id: '1', time: '9:00 AM', duration: '2 hours', points: 50, available: true, spotsLeft: 3 },
-  { id: '2', time: '11:00 AM', duration: '3 hours', points: 75, available: true, spotsLeft: 1 },
-  { id: '3', time: '1:00 PM', duration: '2 hours', points: 50, available: false, spotsLeft: 0 },
-  { id: '4', time: '3:00 PM', duration: '4 hours', points: 100, available: true, spotsLeft: 5 },
-  { id: '5', time: '5:00 PM', duration: '2 hours', points: 60, available: true, spotsLeft: 2 },
-];
-
 interface VenueDetailProps {
   venue: EnrichedVenue;
   onBack: () => void;
-  onBookSlot: (venue: EnrichedVenue, slot: TimeSlot) => void;
+  onBookSlot: (venue: EnrichedVenue, slot: TimeSlot, dogId: string) => void;
 }
 
 export function VenueDetail({ venue, onBack, onBookSlot }: VenueDetailProps) {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [selectedDogId, setSelectedDogId] = useState<string>('');
+
+  // Get today's date in YYYY-MM-DD format
+  const today = useMemo(() => {
+    const date = new Date();
+    return date.toISOString().split('T')[0];
+  }, []);
+
+  // Fetch user's dogs and venue slots
+  const { data: dogs = [], isLoading: dogsLoading } = useDogs();
+  const { data: slotsData, isLoading: slotsLoading } = useVenueSlots(venue.id, today, today);
+
+  // Process slots data from API into TimeSlot format
+  const timeSlots: TimeSlot[] = useMemo(() => {
+    if (!slotsData?.slots || !slotsData.slots[today]) {
+      return [];
+    }
+
+    const slots = slotsData.slots[today].map((slot) => {
+      // Parse the slot_time (HH:MM format) to display format
+      const [hours, minutes] = (slot.slot_time || '').split(':').map(Number);
+      const isPM = hours >= 12;
+      const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+      const timeString = `${displayHours}:${minutes.toString().padStart(2, '0')} ${isPM ? 'PM' : 'AM'}`;
+
+      // Calculate duration (assuming standard 2-hour slots, or use venue settings)
+      const duration = '2 hours';
+
+      // Calculate points/price (mock for now, could come from venue pricing)
+      const points = 50;
+
+      const availableCapacity = Math.round(slot.available_capacity || 0);
+
+      return {
+        id: `${slot.venue_date}-${slot.slot_time}`,
+        time: timeString,
+        duration,
+        points,
+        available: availableCapacity > 0,
+        spotsLeft: availableCapacity
+      };
+    });
+
+    console.log('[VenueDetail] Processed slots:', slots.slice(0, 3));
+    return slots;
+  }, [slotsData, today]);
 
   const extendedVenue = {
     ...venue,
@@ -47,10 +88,12 @@ export function VenueDetail({ venue, onBack, onBookSlot }: VenueDetailProps) {
   };
 
   const handleBooking = () => {
-    if (selectedSlot) {
-      onBookSlot(venue, selectedSlot);
+    if (selectedSlot && selectedDogId) {
+      onBookSlot(venue, selectedSlot, selectedDogId);
     }
   };
+
+  const canBook = selectedSlot && selectedDogId && dogs.length > 0;
 
   return (
     <div className="space-y-6">
@@ -146,10 +189,24 @@ export function VenueDetail({ venue, onBack, onBookSlot }: VenueDetailProps) {
           <Card>
             <CardHeader>
               <CardTitle>Available Time Slots</CardTitle>
-              <p className="text-sm text-muted-foreground">Today, Sept 1, 2025</p>
+              <p className="text-sm text-muted-foreground">
+                {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
             </CardHeader>
             <CardContent className="space-y-3">
-              {mockTimeSlots.map((slot) => (
+              {slotsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">Loading slots...</span>
+                </div>
+              ) : timeSlots.length === 0 ? (
+                <div className="text-center py-8">
+                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-sm text-muted-foreground">No slots available for today</p>
+                  <p className="text-xs text-muted-foreground mt-1">Please try another date</p>
+                </div>
+              ) : (
+                timeSlots.map((slot) => (
                 <div
                   key={slot.id}
                   className={`p-3 rounded-lg border cursor-pointer transition-all ${
@@ -180,7 +237,8 @@ export function VenueDetail({ venue, onBack, onBookSlot }: VenueDetailProps) {
                     </div>
                   </div>
                 </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -204,18 +262,52 @@ export function VenueDetail({ venue, onBack, onBookSlot }: VenueDetailProps) {
                     <span className="font-medium">{selectedSlot.points} points</span>
                   </div>
                 </div>
-                
+
                 <Separator />
-                
+
+                {/* Dog Selection */}
+                <div className="space-y-2">
+                  <Label htmlFor="dog-select">Select Dog *</Label>
+                  {dogsLoading ? (
+                    <div className="text-sm text-muted-foreground">Loading your dogs...</div>
+                  ) : dogs.length === 0 ? (
+                    <div className="text-sm text-muted-foreground">
+                      No dogs found. Please add a dog to your account first.
+                    </div>
+                  ) : (
+                    <Select value={selectedDogId} onValueChange={setSelectedDogId}>
+                      <SelectTrigger id="dog-select">
+                        <SelectValue placeholder="Choose a dog" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {dogs.map((dog) => (
+                          <SelectItem key={dog.id} value={dog.id}>
+                            {dog.name} ({dog.breed})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                <Separator />
+
                 <div className="flex justify-between font-medium">
                   <span>Total:</span>
                   <span>{selectedSlot.points} points</span>
                 </div>
 
-                <Button className="w-full" onClick={handleBooking}>
-                  Book This Slot
+                <Button
+                  className="w-full"
+                  onClick={handleBooking}
+                  disabled={!canBook || dogsLoading}
+                >
+                  {selectedDogId && dogs.find(d => d.id === selectedDogId)
+                    ? `Book for ${dogs.find(d => d.id === selectedDogId)?.name}`
+                    : 'Select a dog to book'
+                  }
                 </Button>
-                
+
                 <p className="text-xs text-muted-foreground text-center">
                   You currently have 150 points available
                 </p>
