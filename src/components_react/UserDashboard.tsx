@@ -8,13 +8,15 @@ import {
   Heart,
   Loader2,
   Plus,
-  Star
+  Star,
+  Trash2
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useBookings, useCreateDog, useDogs, useVenues } from '../hooks/useApi';
-import { BookingResponse, DogRequest } from '../lib/api-client';
+import { useBookings, useCreateDog, useDeleteDog, useDogs, useUpdateDog, useVenues } from '../hooks/useApi';
+import { BookingResponse, Dog, DogRequest } from '../lib/api-client';
 import { AddDogModal } from './AddDogModal';
+import { EditDogModal } from './EditDogModal';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -22,6 +24,16 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useToast } from './ui/toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
 
 
 interface PointsPackage {
@@ -45,11 +57,17 @@ export function UserDashboard() {
   const [currentPoints] = useState(150);
   const { addToast } = useToast();
 
+  // Edit and delete state
+  const [editingDog, setEditingDog] = useState<Dog | null>(null);
+  const [deletingDogId, setDeletingDogId] = useState<string | null>(null);
+
   // Real API hooks
   const { data: dogs = [], isLoading: dogsLoading, error: dogsError } = useDogs();
   const { data: bookingsData = [], isLoading: bookingsLoading, error: bookingsError } = useBookings();
   const { data: venues = [] } = useVenues();
   const createDogMutation = useCreateDog();
+  const updateDogMutation = useUpdateDog();
+  const deleteDogMutation = useDeleteDog();
 
   // Extract first name from user's display name or email
   const getUserFirstName = () => {
@@ -84,6 +102,56 @@ export function UserDashboard() {
         type: 'error',
         title: 'Failed to Add Dog',
         description: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.'
+      });
+    }
+  };
+
+  const handleUpdateDog = async (id: string, dogData: Partial<DogRequest>) => {
+    try {
+      await updateDogMutation.mutateAsync({ id, data: dogData });
+      addToast({
+        type: 'success',
+        title: 'Dog Updated Successfully!',
+        description: `${dogData.name}'s profile has been updated.`
+      });
+    } catch (error) {
+      console.error('Error updating dog:', error);
+      addToast({
+        type: 'error',
+        title: 'Failed to Update Dog',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.'
+      });
+    }
+  };
+
+  const handleDeleteDog = async (dogId: string, dogName: string) => {
+    try {
+      console.log('[UserDashboard] Attempting to delete dog:', dogId, dogName);
+      await deleteDogMutation.mutateAsync(dogId);
+      setDeletingDogId(null);
+      addToast({
+        type: 'success',
+        title: 'Dog Deleted Successfully',
+        description: `${dogName} has been removed from your profile.`
+      });
+    } catch (error) {
+      console.error('[UserDashboard] Error deleting dog:', error);
+      setDeletingDogId(null);
+
+      // Provide more specific error message
+      let errorMessage = 'An unexpected error occurred. Please try again.';
+      if (error instanceof Error) {
+        if (error.message.includes('404')) {
+          errorMessage = 'Delete functionality is not yet available. The backend endpoint may not be implemented.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      addToast({
+        type: 'error',
+        title: 'Failed to Delete Dog',
+        description: errorMessage
       });
     }
   };
@@ -343,9 +411,23 @@ export function UserDashboard() {
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">{dog.name}</CardTitle>
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingDog(dog)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setDeletingDogId(dog.id)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -387,8 +469,12 @@ export function UserDashboard() {
                       <Badge variant={dog.vaccination_status === 'VACCINATED' ? "default" : "secondary"}>
                         {dog.vaccination_status === 'VACCINATED' ? "Vaccinated" : "Needs Update"}
                       </Badge>
-                      <Button variant="outline" size="sm">
-                        View Profile
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingDog(dog)}
+                      >
+                        Edit Profile
                       </Button>
                     </div>
                   </CardContent>
@@ -634,6 +720,51 @@ export function UserDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Dog Modal */}
+      {editingDog && (
+        <EditDogModal
+          dog={editingDog}
+          open={!!editingDog}
+          onOpenChange={(open) => !open && setEditingDog(null)}
+          onUpdateDog={handleUpdateDog}
+          isSubmitting={updateDogMutation.isPending}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingDogId} onOpenChange={(open) => !open && setDeletingDogId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {dogs.find(d => d.id === deletingDogId)?.name}&apos;s profile.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const dog = dogs.find(d => d.id === deletingDogId);
+                if (dog && deletingDogId) {
+                  handleDeleteDog(deletingDogId, dog.name);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteDogMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
